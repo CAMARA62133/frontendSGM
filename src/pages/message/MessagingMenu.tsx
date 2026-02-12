@@ -13,7 +13,6 @@ import {
   ChevronDown,
   Star,
   Trash2,
-  MessageSquare,
   User,
   Home,
 } from "lucide-react";
@@ -75,12 +74,7 @@ const initialMenuItems = [
     badge: 0,
     color: "text-gray-600",
   },
-  {
-    name: "Canal de chat",
-    href: "/messaging/canal",
-    icon: MessageSquare,
-    color: "text-gray-600",
-  },
+
 ];
 
 /**
