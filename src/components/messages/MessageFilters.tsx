@@ -1,45 +1,26 @@
 "use client";
 
 import type { FC } from "react";
-import { User, Calendar, X, Paperclip } from "lucide-react";
+import { User, Calendar, X, Paperclip, Filter } from "lucide-react";
 
 /**
  * 🔹 Interface des props du composant MessageFilters
- *
- * Ce composant gère un panneau de filtres pour les messages.
  */
 interface MessageFiltersProps {
-  /** Indique si le panneau de filtres doit être affiché */
   show: boolean;
-
-  /** Filtre par nom ou email de l'expéditeur ou destinataire */
   filterRecipient: string;
   setFilterRecipient: (value: string) => void;
-
-  /** Filtre pour afficher uniquement les messages avec pièce jointe */
   filterHasAttachment: boolean;
   setFilterHasAttachment: (value: boolean) => void;
-
-  /** Date de début pour filtrer les messages */
   filterDateFrom: string;
   setFilterDateFrom: (value: string) => void;
-
-  /** Date de fin pour filtrer les messages */
   filterDateTo: string;
   setFilterDateTo: (value: string) => void;
-
-  /** Fonction pour réinitialiser tous les filtres */
   clearFilters: () => void;
 }
 
 /**
  * 🔹 Composant MessageFilters
- *
- * Affiche un panneau de filtres comprenant :
- * - Filtre par expéditeur/destinataire
- * - Filtre par messages avec pièce jointe
- * - Filtre par plage de dates
- * - Bouton pour réinitialiser tous les filtres
  */
 const MessageFilters: FC<MessageFiltersProps> = ({
   show,
@@ -53,71 +34,88 @@ const MessageFilters: FC<MessageFiltersProps> = ({
   setFilterDateTo,
   clearFilters,
 }) => {
-  // 🔹 Si le panneau de filtres n'est pas visible, ne rien afficher
   if (!show) return null;
 
   return (
-    <div className="p-4 bg-gray-50 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* -------------------- Filtre Expéditeur / Destinataire -------------------- */}
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          <User className="w-4 h-4 inline mr-1" /> Expéditeur / Destinataire
-        </label>
-        <input
-          type="text"
-          placeholder="Nom ou email"
-          value={filterRecipient}
-          onChange={(e) => setFilterRecipient(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        />
-      </div>
-
-      {/* -------------------- Filtre Pièce Jointe -------------------- */}
-      <div className="flex items-center gap-2 mt-2 sm:mt-0">
-        <Paperclip className="w-4 h-4" />
-        <input
-          type="checkbox"
-          checked={filterHasAttachment}
-          onChange={(e) => setFilterHasAttachment(e.target.checked)}
-          className="h-4 w-4 text-cyan-600 rounded border-gray-300 focus:ring-cyan-500"
-        />
-        <span className="text-sm text-gray-700">Avec pièce jointe</span>
-      </div>
-
-      {/* -------------------- Filtre Date de Début -------------------- */}
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          <Calendar className="w-4 h-4 inline mr-1" /> Date de début
-        </label>
-        <input
-          type="date"
-          value={filterDateFrom}
-          onChange={(e) => setFilterDateFrom(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        />
-      </div>
-
-      {/* -------------------- Filtre Date de Fin -------------------- */}
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          <Calendar className="w-4 h-4 inline mr-1" /> Date de fin
-        </label>
-        <input
-          type="date"
-          value={filterDateTo}
-          onChange={(e) => setFilterDateTo(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        />
-      </div>
-
-      {/* -------------------- Bouton Réinitialiser tous les filtres -------------------- */}
-      <div className="col-span-full flex justify-end mt-2">
+    <div className="p-6 bg-white/80 backdrop-blur-sm rounded-2xl border border-white/60 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Filter className="w-5 h-5 text-cyan-600" />
+          <h3 className="text-lg font-semibold text-gray-900">
+            Filtres avancés
+          </h3>
+        </div>
         <button
           onClick={clearFilters}
-          className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 flex items-center gap-2"
+          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          <X className="w-4 h-4" /> Effacer les filtres
+          <X className="w-4 h-4" />
+          Effacer tout
         </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Filtre Expéditeur / Destinataire */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <User className="w-4 h-4 text-cyan-600" />
+            Expéditeur / Destinataire
+          </label>
+          <input
+            type="text"
+            placeholder="Nom ou email"
+            value={filterRecipient}
+            onChange={(e) => setFilterRecipient(e.target.value)}
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500 bg-white/80 transition-all duration-200"
+          />
+        </div>
+
+        {/* Filtre Pièce Jointe */}
+        <div className="flex items-center gap-3 p-2">
+          <div className="flex items-center gap-2">
+            <Paperclip className="w-4 h-4 text-cyan-600" />
+            <span className="text-sm font-medium text-gray-700">
+              Pièce jointe
+            </span>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={filterHasAttachment}
+              onChange={(e) => setFilterHasAttachment(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+          </label>
+        </div>
+
+        {/* Filtre Date de Début */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <Calendar className="w-4 h-4 text-cyan-600" />
+            Date de début
+          </label>
+          <input
+            type="date"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500 bg-white/80 transition-all duration-200"
+          />
+        </div>
+
+        {/* Filtre Date de Fin */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <Calendar className="w-4 h-4 text-cyan-600" />
+            Date de fin
+          </label>
+          <input
+            type="date"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500 bg-white/80 transition-all duration-200"
+          />
+        </div>
       </div>
     </div>
   );

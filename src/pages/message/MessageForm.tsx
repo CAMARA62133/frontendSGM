@@ -11,12 +11,11 @@ import { X, Paperclip, Send, Save, Loader2 } from "lucide-react";
 import type { User } from "../../models/User";
 import { getAllUsers } from "../../services/userService";
 import type { ErrorResponse, Message } from "../../models/Message";
-import {
-  envoyerMessage,
-} from "../../services/messageService";
+import { envoyerMessage } from "../../services/messageService";
 import Toast from "../../components/ui/Toast";
 import type { AxiosError } from "axios";
 import { useAuth } from "../../context/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface MessageFormModalProps {
   isOpen: boolean;
@@ -29,7 +28,7 @@ interface MessageFormModalProps {
   mode?: "new" | "reply" | "forward" | "draft";
 }
 
-const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
+const MessageFormModal: React.FC<MessageFormModalProps> = ({
   isOpen,
   onClose,
   onSendSuccess,
@@ -43,13 +42,12 @@ const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
   const [isSending, setIsSending] = useState(false);
   const isProcessing = isSaving || isSending;
   const [isSent, setIsSent] = useState(false);
-
+const navigate = useNavigate();
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "warning" | "info";
   } | null>(null);
 
-  // États pour le formulaire
   const [sujet, setSujet] = useState("");
   const [contenu, setContenu] = useState("");
   const [destinataires, setDestinataires] = useState<string[]>([]);
@@ -60,8 +58,9 @@ const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const messageRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const {  user } = useAuth();
-  // Gestion du contenu éditable
+  const { user } = useAuth();
+
+  // 🔹 Gestion du contenu éditable
   const handleMessageChange = useCallback(() => {
     if (messageRef.current) {
       setContenu(messageRef.current.innerHTML);
@@ -77,236 +76,15 @@ const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
     [handleMessageChange]
   );
 
-  // --- Fonction pour l'envoi / la sauvegarde ---
-  const handleSaveOrSend = useCallback(
-    async (estBrouillon: boolean) => {
-      if (estBrouillon === false) {
-        if (!sujet.trim()) {
-          setToast({
-            message: "Veuillez renseigner un sujet.",
-            type: "warning",
-          });
-          return;
-        }
-        if (destinataires.length === 0) {
-          setToast({
-            message: "Ajoutez au moins un destinataire.",
-            type: "warning",
-          });
-          return;
-        }
-      }
-
-      const setProcessingState = estBrouillon ? setIsSaving : setIsSending;
-
-      try {
-        setProcessingState(true);
-
-        // Préparation des données communes
-        const formData = new FormData();
-        formData.append("sujet", sujet);
-        formData.append("contenu", contenu);
-        formData.append("estBrouillon", estBrouillon.toString());
-
-        // Ajout des destinataires et pièces jointes
-        destinataires.forEach((dest) => formData.append("destinataires", dest));
-        piecesJointes.forEach((file) => formData.append("piecesJointes", file));
-
-        if (mode === "reply" && initialMessage?.id) {
-          // Répondre à un message - utiliser threadId du message initial
-          formData.append("threadId", initialMessage.id);
-          formData.append("mode", "reply");
-          await envoyerMessage(formData);
-        } else if (mode === "forward" && initialMessage?.id) {
-          // Transférer un message - utiliser le backend d'envoi normal
-          formData.append("mode", "forward");
-          await envoyerMessage(formData);
-        } else {
-          // Nouveau message ou brouillon
-          if (threadId) {
-            formData.append("threadId", threadId);
-          }
-          await envoyerMessage(formData);
-        }
-
-        if (estBrouillon) {
-          setToast({ message: "Brouillon sauvegardé 💾", type: "success" });
-        } else {
-          setToast({
-            message: "Message envoyé avec succès 🎉",
-            type: "success",
-          });
-          setIsSent(true);
-          onSendSuccess?.();
-          onClose();
-        }
-      } catch (err) {
-        const axiosError = err as AxiosError<ErrorResponse>;
-        const errorMessage = axiosError?.response?.data?.message;
-
-        if (errorMessage?.includes("emailsInvalides")) {
-          const invalidEmails =
-            axiosError.response?.data?.emailsInvalides || [];
-          setToast({
-            message: `Destinataires invalides: ${invalidEmails.join(", ")}`,
-            type: "error",
-          });
-        } else {
-          const msg = errorMessage || "Erreur lors de l'opération. Réessayez.";
-          setToast({ message: msg, type: "error" });
-        }
-      } finally {
-        setProcessingState(false);
-      }
-    },
-    [
-      sujet,
-      contenu,
-      destinataires,
-      piecesJointes,
-      mode,
-      initialMessage,
-      threadId,
-      onClose,
-      onSendSuccess,
-    ]
-  );
-
-  // --- Effets et Logique d'initialisation ---
-  useEffect(() => {
-    if (!isOpen) {
-      // Réinitialisation des états à la fermeture
-      setSujet("");
-      setContenu("");
-      setDestinataires([]);
-      setPiecesJointes([]);
-      setIsSent(false);
-      return;
-    }
-
-    let defaultSujet = initialSubject || "";
-    let defaultContenu = "";
-    let defaultDestinataires: string[] = [];
-
-    if (initialMessage) {
-      const isDraft = initialMessage.estBrouillon;
-
-      // Gérer le sujet avec préfixe
-      if (!isDraft) {
-        if (
-          initialMessage.sujet &&
-          !initialMessage.sujet.startsWith(mode === "reply" ? "Re: " : "Tr: ")
-        ) {
-          defaultSujet =
-            mode === "reply"
-              ? `Re: ${initialMessage.sujet}`
-              : mode === "forward"
-              ? `Tr: ${initialMessage.sujet}`
-              : initialMessage.sujet;
-        } else {
-          defaultSujet = initialMessage.sujet || defaultSujet;
-        }
-      } else {
-        defaultSujet = initialMessage.sujet || defaultSujet;
-      }
-
-      if (mode === "reply") {
-        // Logique pour la réponse
-        const originalContent = initialMessage.contenu || "";
-        const originalSender = initialMessage.expediteur as User;
-        const originalSenderEmail =
-          originalSender?.email || "expéditeur inconnu";
-
-        // Pour la réponse, le destinataire est l'expéditeur original
-        defaultDestinataires =
-          originalSenderEmail !== "expéditeur inconnu"
-            ? [originalSenderEmail]
-            : [];
-
-        // Contenu avec citation
-        defaultContenu = `<div><br></div><blockquote style="border-left: 2px solid #ccc; margin: 1em 0; padding-left: 10px; color: #555;">De: ${originalSenderEmail}<br>Sujet: ${
-          initialMessage.sujet || "Sans objet"
-        }<br><br>${originalContent}</blockquote>`;
-      } else if (mode === "forward") {
-        // Logique pour le transfert - destinataires vides par défaut
-        defaultDestinataires = Array.isArray(initialRecipient)
-          ? initialRecipient
-          : initialRecipient
-          ? [initialRecipient]
-          : [];
-
-        const originalContent = initialMessage.contenu || "";
-        const originalSender = initialMessage.expediteur as User;
-        const originalSenderEmail =
-          originalSender?.email || "expéditeur inconnu";
-
-        defaultContenu = `<div><br></div><p>----- Message transféré -----</p><blockquote style="border-left: 2px solid #ccc; margin: 1em 0; padding-left: 10px; color: #555;">De: ${originalSenderEmail}<br>Sujet: ${
-          initialMessage.sujet || "Sans objet"
-        }<br><br>${originalContent}</blockquote>`;
-      } else if (isDraft) {
-        // Brouillon existant
-        defaultContenu = initialMessage.contenu || "";
-        defaultDestinataires = initialMessage.destinataires
-          ? initialMessage.destinataires.map((d) =>
-              typeof d === "string" ? d : d.email
-            )
-          : [];
-      }
-    } else {
-      // Mode 'new' sans initialMessage
-      defaultContenu = "";
-      defaultDestinataires = Array.isArray(initialRecipient)
-        ? initialRecipient
-        : initialRecipient
-        ? [initialRecipient]
-        : [];
-    }
-
-    // Mise à jour des états
-    setSujet(defaultSujet);
-    setContenu(defaultContenu);
-    setDestinataires(defaultDestinataires);
-
-    // Mettre à jour le div contentEditable
-    if (messageRef.current) {
-      messageRef.current.innerHTML = defaultContenu;
-    }
-  }, [isOpen, mode, initialMessage, initialSubject, initialRecipient]);
-
-  // Fetch users
-  useEffect(() => {
-    if (!isOpen) return;
-    const fetchUsers = async () => {
-      try {
-        const res = await getAllUsers();
-        setUsers(res.data.users || []);
-      } catch (e) {
-        const error = e as AxiosError<{ message: string }>;
-        setToast({
-          message:
-            error.response?.data?.message ||
-            "Impossible de récupérer la liste des utilisateurs",
-          type: "error",
-        });
-      }
-    };
-    fetchUsers();
-  }, [isOpen]);
-
-  // --- Fonctions utilitaires pour destinataires et pièces jointes ---
+  // 🔹 Ajouter un destinataire
   const addRecipient = (newEmail: string) => {
     const emailTrim = newEmail.trim().toLowerCase();
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
     if (!emailTrim || !emailRegex.test(emailTrim)) {
       setToast({ message: "Adresse e-mail invalide.", type: "warning" });
       return;
     }
-
-    setDestinataires((prev) => {
-      const newDest = new Set([...prev, emailTrim]);
-      return Array.from(newDest);
-    });
+    setDestinataires((prev) => Array.from(new Set([...prev, emailTrim])));
     setEmailInput("");
     setFilteredUsers([]);
   };
@@ -318,7 +96,6 @@ const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
   const handleEmailInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setEmailInput(value);
-
     if (value.length > 0) {
       const filtered = users.filter(
         (u) =>
@@ -335,7 +112,6 @@ const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
     addRecipient(userEmail);
   };
 
-  // Gestion des pièces jointes
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
@@ -348,7 +124,194 @@ const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
     setPiecesJointes((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // --- Gestion de la fermeture ---
+  // 🔹 Fonction pour sauvegarder ou envoyer
+const handleSaveOrSend = useCallback(
+  async (estBrouillon: boolean) => {
+    if (!estBrouillon) {
+      if (!sujet.trim()) {
+        setToast({ message: "Veuillez renseigner un sujet.", type: "warning" });
+        return;
+      }
+      if (destinataires.length === 0) {
+        setToast({
+          message: "Ajoutez au moins un destinataire.",
+          type: "warning",
+        });
+        return;
+      }
+
+      // Confirmation avant envoi
+      const confirmSend = window.confirm(
+        "Êtes-vous sûr de vouloir envoyer ce message ?"
+      );
+      if (!confirmSend) return;
+    }
+
+    const setProcessingState = estBrouillon ? setIsSaving : setIsSending;
+
+    try {
+      setProcessingState(true);
+
+      const formData = new FormData();
+      formData.append("sujet", sujet);
+      formData.append("contenu", contenu);
+      formData.append("estBrouillon", estBrouillon.toString());
+      destinataires.forEach((d) => formData.append("destinataires", d));
+      piecesJointes.forEach((file) => formData.append("piecesJointes", file));
+
+      // 🔹 Toujours envoyer messageId si c'est un brouillon existant ou envoi
+      if (initialMessage?.id) {
+        formData.append("messageId", initialMessage.id);
+      }
+
+      // 🔹 Gestion threadId pour reply/forward
+      if (mode === "reply" || mode === "forward") {
+        formData.append("mode", mode);
+        formData.append("threadId", initialMessage?.id || "");
+      } else if (threadId) {
+        formData.append("threadId", threadId);
+      }
+
+      await envoyerMessage(formData);
+
+      if (estBrouillon) {
+        setToast({ message: "Brouillon sauvegardé 💾", type: "success" });
+        // 🔹 Redirection vers /messaging/trash après 500ms pour laisser le toast s'afficher
+        setTimeout(() => {
+          navigate("/messaging/trash");
+        }, 500);
+      } else {
+        setToast({ message: "Message envoyé avec succès 🎉", type: "success" });
+        setIsSent(true);
+        onSendSuccess?.();
+        onClose();
+      }
+    } catch (err) {
+      const axiosError = err as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError?.response?.data?.message;
+
+      if (errorMessage?.includes("emailsInvalides")) {
+        const invalidEmails = axiosError.response?.data?.emailsInvalides || [];
+        setToast({
+          message: `Destinataires invalides: ${invalidEmails.join(", ")}`,
+          type: "error",
+        });
+      } else {
+        setToast({
+          message: errorMessage || "Erreur lors de l'opération.",
+          type: "error",
+        });
+      }
+    } finally {
+      setProcessingState(false);
+    }
+  },
+  [
+    sujet,
+    contenu,
+    destinataires,
+    piecesJointes,
+    mode,
+    initialMessage,
+    threadId,
+    onClose,
+    onSendSuccess,
+    navigate
+  ]
+);
+
+
+  // 🔹 Initialisation du formulaire
+  useEffect(() => {
+    if (!isOpen) {
+      setSujet("");
+      setContenu("");
+      setDestinataires([]);
+      setPiecesJointes([]);
+      setIsSent(false);
+      return;
+    }
+
+    let defaultSujet = initialSubject || "";
+    let defaultContenu = "";
+    let defaultDestinataires: string[] = [];
+
+    if (initialMessage) {
+      const isDraft = initialMessage.estBrouillon;
+
+      // Sujet
+      if (!isDraft && initialMessage.sujet) {
+        defaultSujet =
+          mode === "reply"
+            ? `Re: ${initialMessage.sujet}`
+            : mode === "forward"
+            ? `Tr: ${initialMessage.sujet}`
+            : initialMessage.sujet;
+      } else {
+        defaultSujet = initialMessage.sujet || defaultSujet;
+      }
+
+      // Contenu
+      if (mode === "reply") {
+        const originalSenderEmail =
+          (initialMessage.expediteur as User)?.email || "";
+        defaultContenu = `<div><br></div><blockquote style="border-left:2px solid #ccc;padding-left:10px;color:#555;">De: ${originalSenderEmail}<br>Sujet: ${
+          initialMessage.sujet || "Sans objet"
+        }<br><br>${initialMessage.contenu || ""}</blockquote>`;
+        defaultDestinataires = originalSenderEmail ? [originalSenderEmail] : [];
+      } else if (mode === "forward") {
+        const originalSenderEmail =
+          (initialMessage.expediteur as User)?.email || "";
+        defaultContenu = `<div><br></div><p>----- Message transféré -----</p><blockquote style="border-left:2px solid #ccc;padding-left:10px;color:#555;">De: ${originalSenderEmail}<br>Sujet: ${
+          initialMessage.sujet || "Sans objet"
+        }<br><br>${initialMessage.contenu || ""}</blockquote>`;
+        defaultDestinataires = Array.isArray(initialRecipient)
+          ? initialRecipient
+          : initialRecipient
+          ? [initialRecipient]
+          : [];
+      } else if (isDraft) {
+        defaultContenu = initialMessage.contenu || "";
+        defaultDestinataires =
+          initialMessage.destinataires?.map((d) =>
+            typeof d === "string" ? d : d.email
+          ) || [];
+      }
+    } else {
+      defaultDestinataires = Array.isArray(initialRecipient)
+        ? initialRecipient
+        : initialRecipient
+        ? [initialRecipient]
+        : [];
+    }
+
+    setSujet(defaultSujet);
+    setContenu(defaultContenu);
+    setDestinataires(defaultDestinataires);
+    if (messageRef.current) messageRef.current.innerHTML = defaultContenu;
+  }, [isOpen, initialMessage, initialRecipient, initialSubject, mode]);
+
+  // 🔹 Fetch users
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchUsers = async () => {
+      try {
+        const res = await getAllUsers();
+        setUsers(res.data.users || []);
+      } catch (e) {
+        const error = e as AxiosError<{ message: string }>;
+        setToast({
+          message:
+            error.response?.data?.message ||
+            "Impossible de récupérer les utilisateurs",
+          type: "error",
+        });
+      }
+    };
+    fetchUsers();
+  }, [isOpen]);
+
+  // 🔹 Gestion fermeture
   const handleClose = useCallback(() => {
     if (isSent || isProcessing) return;
 
@@ -397,29 +360,27 @@ const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
         <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-gray-100 relative flex flex-col max-h-[95vh] overflow-hidden">
           {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200 bg-white">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="bg-cyan-500 p-2 rounded-lg shadow-sm">
-                  <Send className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">
-                    {currentTitle}
-                  </h1>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Rédigez votre message
-                  </p>
-                </div>
+          <div className="px-6 py-4 border-b border-gray-200 bg-white flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="bg-cyan-500 p-2 rounded-lg shadow-sm">
+                <Send className="w-5 h-5 text-white" />
               </div>
-              <button
-                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200"
-                onClick={handleClose}
-                disabled={isProcessing}
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">
+                  {currentTitle}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  Rédigez votre message
+                </p>
+              </div>
             </div>
+            <button
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200"
+              onClick={handleClose}
+              disabled={isProcessing}
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Content */}
@@ -465,12 +426,13 @@ const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
                     autoComplete="off"
                   />
                 </div>
+
                 {filteredUsers
                   .filter(
                     (u) =>
                       u.type !== "admin" &&
                       u.type !== "directeur" &&
-                      u.id !== user!.id // 🔹 exclut l'utilisateur courant
+                      u.id !== user!.id
                   )
                   .map((u) => (
                     <div
@@ -538,7 +500,7 @@ const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
               <label className="text-sm font-semibold text-gray-700 w-20 pt-2 shrink-0">
                 Fichiers:
               </label>
-              <div className="flex-1 flex flex-col gap-3">
+              <div className="flex flex-col gap-3 flex-1">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -629,4 +591,4 @@ const MessageFormModalProps: React.FC<MessageFormModalProps> = ({
   );
 };
 
-export default MessageFormModalProps;
+export default MessageFormModal;

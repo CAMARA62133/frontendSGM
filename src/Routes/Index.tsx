@@ -26,6 +26,7 @@ import MessageDetailPage from "../pages/message/MessageDetailPage";
 import DashboardEleve from "../pages/user/DashboardEleve";
 import ParentStudentDashboard from "../pages/user/ParentStudentDashboard";
 import CanalCommunication from "../pages/cannalcommunication/CanalCommunication";
+import Vitrine from "../pages/vitrine/Vitrine";
 
 /**
  * Composant principal de gestion des routes de l'application
@@ -36,6 +37,8 @@ const AppRoutes: React.FC = () => (
       <Routes>
         {/* ------------------ Routes Auth ------------------ */}
         <Route path="/login" element={<Login />} />
+        <Route path="/vitrine" element={<Vitrine />} />
+        <Route path="canal" element={<CanalCommunication />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route
           path="/eleve"
@@ -66,7 +69,6 @@ const AppRoutes: React.FC = () => (
           <Route index element={<Navigate to="users" replace />} />
           <Route path="users" element={<UserList />} />
           <Route path="messages" element={<MessageList />} />
-          
         </Route>
 
         {/* ------------------ Messagerie ------------------ */}
@@ -85,7 +87,7 @@ const AppRoutes: React.FC = () => (
           <Route path="archived" element={<ArchivedPage />} />
           <Route path="favorites" element={<FavoritesPage />} />
           <Route path="trash" element={<TrashPage />} />
-          <Route path="canal" element={<CanalCommunication />} />
+
           <Route path="message/:id" element={<MessageDetailPage />} />
         </Route>
 

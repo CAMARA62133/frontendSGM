@@ -726,7 +726,7 @@ interface LinkProps {
   label: string;
   sectionId: string;
   active: boolean;
-  onClick: (sectionId: string) => void;
+  onClick: (sectionId:string) => void;
 }
 const NavLink: React.FC<LinkProps> = ({
   icon: Icon,

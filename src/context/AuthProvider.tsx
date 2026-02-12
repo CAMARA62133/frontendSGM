@@ -190,7 +190,7 @@ useEffect(() => {
       const routes: Record<User["type"], string> = {
         admin: "/admin",
         directeur: "/admin",
-        user: "/messaging",
+        user: "/vitrine",
       };
       navigate(routes[type] || "/login", { replace: true });
     },

@@ -30,11 +30,6 @@ export type ActionType =
 
 /**
  * 🔹 Props du composant FloatingActions
- *
- * - selectedMessages : tableau des IDs des messages sélectionnés
- * - actions : tableau des actions disponibles pour ces messages
- * - onUpdateMessages : callback après qu'une action soit exécutée
- * - position : position du floating panel ("center" ou "left")
  */
 type FloatingActionsProps = {
   selectedMessages: string[];
@@ -45,7 +40,6 @@ type FloatingActionsProps = {
 
 /**
  * 🔹 Composant FloatingActions
- * Affiche un panel flottant avec les actions possibles sur les messages sélectionnés.
  */
 export default function FloatingActions({
   selectedMessages,
@@ -53,19 +47,15 @@ export default function FloatingActions({
   onUpdateMessages,
   position = "center",
 }: FloatingActionsProps) {
-  const [action, setAction] = useState<ActionType | null>(null); // Action en cours
-  const [isLoading, setIsLoading] = useState(false); // Indique si une action est en cours
+  const [action, setAction] = useState<ActionType | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  /**
-   * 🔹 useEffect pour exécuter l'action sélectionnée
-   */
   useEffect(() => {
     if (!action || selectedMessages.length === 0) return;
 
     const executeAction = async () => {
-      setIsLoading(true); // Début du chargement
+      setIsLoading(true);
       try {
-        // Exécuter l'action sur chaque message sélectionné
         const promises = selectedMessages.map(async (id) => {
           switch (action) {
             case "markAsRead":
@@ -91,25 +81,21 @@ export default function FloatingActions({
           }
         });
 
-        await Promise.all(promises); // Attendre que toutes les actions soient terminées
-        onUpdateMessages(selectedMessages, action); // Callback pour mettre à jour la liste
+        await Promise.all(promises);
+        onUpdateMessages(selectedMessages, action);
       } catch (error) {
         console.error("Erreur lors de l'exécution de l'action :", error);
       } finally {
-        setIsLoading(false); // Fin du chargement
-        setAction(null); // Reset de l'action
+        setIsLoading(false);
+        setAction(null);
       }
     };
 
     executeAction();
   }, [action, selectedMessages, onUpdateMessages]);
 
-  // Ne pas afficher le panel si aucun message n'est sélectionné
   if (selectedMessages.length === 0) return null;
 
-  /**
-   * 🔹 Configuration des boutons pour chaque action
-   */
   const getActionConfig = (actionType: ActionType) => {
     const configs = {
       markAsRead: {
@@ -117,78 +103,65 @@ export default function FloatingActions({
         label: "Marquer comme lu",
         color: "text-blue-600",
         bgColor: "hover:bg-blue-50",
-        borderColor: "border-blue-200",
       },
       markAllAsRead: {
         icon: MailOpen,
         label: "Tout marquer comme lu",
         color: "text-blue-600",
         bgColor: "hover:bg-blue-50",
-        borderColor: "border-blue-200",
       },
       archive: {
         icon: Archive,
         label: "Archiver",
         color: "text-green-600",
         bgColor: "hover:bg-green-50",
-        borderColor: "border-green-200",
       },
       dearchive: {
         icon: Archive,
         label: "Désarchiver",
         color: "text-green-600",
         bgColor: "hover:bg-green-50",
-        borderColor: "border-green-200",
       },
       restore: {
         icon: RotateCcw,
         label: "Restaurer",
         color: "text-cyan-600",
         bgColor: "hover:bg-cyan-50",
-        borderColor: "border-cyan-200",
       },
       favorite: {
         icon: Star,
         label: "Ajouter aux favoris",
         color: "text-yellow-600",
         bgColor: "hover:bg-yellow-50",
-        borderColor: "border-yellow-200",
       },
       defavorite: {
         icon: Star,
         label: "Retirer des favoris",
         color: "text-yellow-400",
         bgColor: "hover:bg-yellow-50",
-        borderColor: "border-yellow-200",
       },
       delete: {
         icon: Trash2,
         label: "Déplacer vers la corbeille",
         color: "text-red-600",
         bgColor: "hover:bg-red-50",
-        borderColor: "border-red-200",
       },
       deletePermanent: {
         icon: Trash2,
         label: "Supprimer définitivement",
         color: "text-red-700",
         bgColor: "hover:bg-red-100",
-        borderColor: "border-red-300",
       },
       emptyTrash: {
         icon: Trash2,
         label: "Vider la corbeille",
         color: "text-red-700",
         bgColor: "hover:bg-red-100",
-        borderColor: "border-red-300",
       },
     };
     return configs[actionType];
   };
 
-  /**
-   * 🔹 Fonction pour créer un bouton d'action
-   */
   const renderIconButton = (actionType: ActionType) => {
     const config = getActionConfig(actionType);
     const Icon = config.icon;
@@ -197,22 +170,21 @@ export default function FloatingActions({
       <button
         key={actionType}
         onClick={() => setAction(actionType)}
-        disabled={isLoading} // Désactive le bouton si une action est en cours
-        title={config.label} // Tooltip
+        disabled={isLoading}
+        title={config.label}
         className={`
-          p-3 bg-white rounded-xl transition-all duration-200 flex items-center justify-center
-          shadow-sm border ${config.borderColor}
+          p-2 bg-white rounded-lg transition-all duration-200 flex items-center justify-center
+          border border-gray-200
           ${config.color} ${config.bgColor}
           disabled:opacity-50 disabled:cursor-not-allowed
-          hover:shadow-md hover:scale-105 active:scale-95
-          min-w-[44px] min-h-[44px]
+          hover:scale-105 active:scale-95
+          min-w-[36px] min-h-[36px]
         `}
       >
         {isLoading && action === actionType ? (
-          // Affiche un loader si l'action est en cours
-          <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
         ) : (
-          <Icon className="w-5 h-5" />
+          <Icon className="w-4 h-4" />
         )}
       </button>
     );
@@ -221,9 +193,9 @@ export default function FloatingActions({
   return (
     <div
       className={`
-        fixed top-24 z-50 p-4 rounded-2xl shadow-2xl 
-        border border-gray-100 backdrop-blur-sm bg-white/95
-        flex items-center gap-3 flex-wrap transition-all duration-300
+        fixed top-20 z-50 p-4 rounded-xl 
+        border border-gray-200 bg-white
+        flex items-center gap-3 transition-all duration-300
         animate-in slide-in-from-top-5
         ${
           position === "center"
@@ -233,8 +205,8 @@ export default function FloatingActions({
       `}
     >
       {/* 🔹 Badge indiquant le nombre de messages sélectionnés */}
-      <div className="flex items-center gap-3 mr-2">
-        <div className="bg-gradient-to-br from-cyan-500 to-blue-600 text-white px-3 py-1.5 rounded-full text-sm font-semibold shadow-sm">
+      <div className="flex items-center gap-2">
+        <div className="bg-cyan-500 text-white px-2 py-1 rounded text-sm font-medium">
           {selectedMessages.length}
         </div>
         <span className="text-sm text-gray-700 font-medium whitespace-nowrap">
@@ -244,7 +216,7 @@ export default function FloatingActions({
       </div>
 
       {/* 🔹 Séparateur */}
-      <div className="h-6 w-px bg-gray-300"></div>
+      <div className="h-5 w-px bg-gray-200"></div>
 
       {/* 🔹 Boutons d'action */}
       <div className="flex items-center gap-2">

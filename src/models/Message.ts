@@ -25,6 +25,7 @@ export interface Message {
   threadId?: string; // ID du fil de discussion (facultatif)
   piecesJointes?: PieceJointe[]; // Pièces jointes (facultatif)
   estBrouillon: boolean; // Indique si le message est un brouillon
+  estEnvoye: boolean; // Indique si le message est un envoye
   estLu: boolean; // Indique si le message a été lu
   estFavori: boolean; // Indique si le message est marqué comme favori
   estArchive: boolean; // Indique si le message est archivé

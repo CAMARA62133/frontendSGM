@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Mail,
+
   UserPlus,
   Users,
   LogOut,
@@ -19,7 +19,7 @@ import { useAuth } from "../../context/useAuth";
 // ======================================
 const initialMenuItems = [
   { name: "Utilisateurs", href: "/admin/users", icon: Users },
-  { name: "Messages", href: "/admin/messages", icon: Mail },
+
  
 ];
 

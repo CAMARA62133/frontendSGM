@@ -23,4 +23,4 @@ createRoot(rootElement!).render(
     {/* App est le composant principal qui contient toutes les routes et le layout */}
     <App />
   </StrictMode>
-);
+); 
