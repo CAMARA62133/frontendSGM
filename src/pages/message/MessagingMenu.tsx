@@ -10,10 +10,8 @@ import {
   Menu,
   X,
   LogOut,
-  ChevronDown,
   Star,
   Trash2,
-  User,
   Home,
 } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -74,7 +72,6 @@ const initialMenuItems = [
     badge: 0,
     color: "text-gray-600",
   },
-
 ];
 
 /**
@@ -377,35 +374,29 @@ export default function MessagingLayout() {
           </div>
 
           {/* Menu utilisateur */}
+
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/80 hover:bg-white border border-gray-200/80 hover:border-cyan-200 shadow-sm hover:shadow-md transition-all duration-200 group"
+              className="w-10 h-10 flex items-center justify-center gap-2 
+                       rounded-full bg-pink-600 hover:bg-pink-700 
+                       transition-colors duration-300"
             >
-              <div className="w-9 h-9 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-full flex items-center justify-center shadow-md overflow-hidden">
-                {user?.photo ? (
-                  <img
-                    src={user.photo}
-                    alt={`${user.prenom} ${user.nom}`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <User className="w-4 h-4 text-white" />
-                )}
-              </div>
-              <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium text-gray-900">
-                  {user?.prenom} {user?.nom}
-                </p>
-                <p className="text-xs text-gray-500 truncate max-w-32">
-                  {user?.email}
-                </p>
-              </div>
-              <ChevronDown
-                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
-                  userMenuOpen ? "rotate-180 text-cyan-600" : ""
-                }`}
-              />
+              {user?.photo ? (
+                <img
+                  src={user.photo}
+                  alt="Avatar"
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <span className="text-white font-bold text-lg">
+                  {(user?.prenom?.[0] || "").toUpperCase()}
+                  {(user?.nom?.[0] || "").toUpperCase()}
+                </span>
+              )}
+
+              {/* Pastille "En ligne" */}
+              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </button>
 
             {userMenuOpen && (
@@ -414,41 +405,43 @@ export default function MessagingLayout() {
                   className="fixed inset-0 z-40"
                   onClick={() => setUserMenuOpen(false)}
                 />
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-200/80 py-2 z-50">
-                  <div className="px-4 py-3 border-b border-gray-100/80">
-                    <p className="text-sm font-semibold text-gray-900">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-md border border-gray-200 py-1 z-50 shadow-lg">
+                  <div className="px-3 py-2 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
                       {user?.prenom} {user?.nom}
                     </p>
-                    <p className="text-sm text-gray-500 truncate mt-1">
+                    <p className="text-xs text-gray-500 truncate">
                       {user?.email}
                     </p>
                   </div>
+
+    
+
+                  {/* Accueil */}
                   <button
-                    onClick={() => {
-                      navigate("/vitrine");
-                    }}
-                    className="flex items-center gap-3 w-full px-4 py-3 text-left text-cyan-600 hover:bg-red-50/80 transition-colors rounded-lg mx-2 my-1"
+                    onClick={() => navigate("/vitrine")}
+                    className="w-full px-4 py-2 flex items-center gap-2 text-sm font-medium text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 transition"
                   >
                     <Home className="w-4 h-4" />
-                    <span className="font-medium">Accueil</span>
+                    Accueil
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-3 w-full px-4 py-3 text-left text-red-600 hover:bg-red-50/80 transition-colors rounded-lg mx-2 my-1"
+                    className="flex items-center gap-2 w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 text-sm"
                   >
-                    <LogOut className="w-4 h-4" />
-                    <span className="font-medium">Se déconnecter</span>
+                    <LogOut className="w-3 h-3" />
+                    <span>Se déconnecter</span>
                   </button>
                 </div>
               </>
             )}
           </div>
+
         </header>
 
         {/* Contenu principal */}
         <main className="flex-1 min-h-0 bg-gradient-to-br from-slate-50/50 via-cyan-50/10 to-blue-50/20 p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
-       
             <Outlet />
           </div>
         </main>

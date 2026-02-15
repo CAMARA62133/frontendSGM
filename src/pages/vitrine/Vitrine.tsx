@@ -1,8 +1,6 @@
-// src/App.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/useAuth";
 import {
-  ChevronDown,
   LogOut,
   User,
   MessageCircle,
@@ -11,15 +9,51 @@ import {
   Shield,
   Sparkles,
   Heart,
+  Menu,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+  autoRefresh,
+  nombreMessagesNonLus,
+} from "../../services/messageService";
+import { getUnreadCounts } from "../../services/communicationService";
 
 const Vitrine: React.FC = () => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Logique pour le menu mobile
   const [isScrolled, setIsScrolled] = useState(false);
+  const [unreadCountMessages, setUnreadCountMessages] = useState(0);
+  const [unreadCountCommunication, setUnreadCountCommunication] = useState(0);
 
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const response = await nombreMessagesNonLus();
+      setUnreadCountMessages(response.count ?? 0);
+    } catch {
+      setUnreadCountMessages(0);
+    }
+  }, []);
+  const fetchUnreadCountCommunication = useCallback(async () => {
+    try {
+      const response = await getUnreadCounts();
+      setUnreadCountCommunication(response.count ?? 0);
+    } catch {
+      setUnreadCountCommunication(0);
+    }
+  }, []);
+
+  const fetchAllCounts = useCallback(async () => {
+    await fetchUnreadCount();
+    await fetchUnreadCountCommunication();
+  }, [fetchUnreadCount, fetchUnreadCountCommunication]);
+
+  useEffect(() => {
+    const stop = autoRefresh(fetchAllCounts, 5000);
+    return () => stop();
+  }, [fetchAllCounts]);
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -35,65 +69,63 @@ const Vitrine: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
-      {/* Header compact */}
       <header
         className={`fixed top-0 w-full z-50 transition-all duration-300 ${
           isScrolled
-            ? "bg-white/95 backdrop-blur-sm border-b border-gray-200 py-2"
+            ? "bg-white/95 backdrop-blur-sm border-b border-gray-200 py-2 shadow-sm"
             : "bg-white py-3"
         }`}
       >
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center">
-            {/* Logo */}
             <div className="flex items-center space-x-1">
               <img
                 src="/assets/img/edulinkerpro.svg"
-                alt=""
-                className="w-15 h-15 rounded-full"
+                alt="Logo"
+                className="w-10 h-10 md:w-12 md:h-12 rounded-full"
               />
-              <span className="text-xl font-bold text-gray-900">
+              <span className="text-lg md:text-xl font-bold text-gray-900">
                 EduLinkerPro
               </span>
             </div>
 
-            {/* Navigation */}
-            <nav className="hidden lg:flex items-center space-x-4">
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center space-x-6">
               <a
                 href="#hero"
-                className="text-gray-600 hover:text-cyan-500 transition-colors duration-200 font-medium text-sm"
+                className="text-gray-600 hover:text-cyan-500 transition-colors font-medium text-sm"
               >
                 Accueil
               </a>
               <a
                 href="#advantages"
-                className="text-gray-600 hover:text-pink-600 transition-colors duration-200 font-medium text-sm"
+                className="text-gray-600 hover:text-pink-600 transition-colors font-medium text-sm"
               >
                 Avantages
               </a>
 
-              {/* User Menu */}
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors duration-200"
+                  className="w-10 h-10 flex items-center justify-center gap-2 
+             rounded-full bg-pink-600 hover:bg-pink-700 
+             transition-colors duration-300"
                 >
-                  <div className="w-7 h-7 bg-cyan-500 rounded-full flex items-center justify-center overflow-hidden">
-                    {user?.photo ? (
-                      <img
-                        src={user.photo}
-                        alt={`${user.prenom} ${user.nom}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-3 h-3 text-white" />
-                    )}
-                  </div>
-                  <ChevronDown
-                    className={`w-3 h-3 text-gray-500 transition-transform duration-200 ${
-                      userMenuOpen ? "rotate-180" : ""
-                    }`}
-                  />
+                  {user?.photo ? (
+                    <img
+                      src={user.photo}
+                      alt="Avatar"
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <span className="text-white font-bold text-lg">
+                      {(user?.prenom?.[0] || "").toUpperCase()}
+                      {(user?.nom?.[0] || "").toUpperCase()}
+                    </span>
+                  )}
+
+                  {/* Pastille "En ligne" */}
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
                 </button>
 
                 {userMenuOpen && (
@@ -102,9 +134,9 @@ const Vitrine: React.FC = () => {
                       className="fixed inset-0 z-40"
                       onClick={() => setUserMenuOpen(false)}
                     />
-                    <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-md border border-gray-200 py-1 z-50 shadow-sm">
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-md border border-gray-200 py-1 z-50 shadow-lg">
                       <div className="px-3 py-2 border-b border-gray-100">
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
                           {user?.prenom} {user?.nom}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
@@ -113,7 +145,7 @@ const Vitrine: React.FC = () => {
                       </div>
                       <button
                         onClick={handleLogout}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 transition-colors duration-200 text-sm"
+                        className="flex items-center gap-2 w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 text-sm"
                       >
                         <LogOut className="w-3 h-3" />
                         <span>Se déconnecter</span>
@@ -124,93 +156,133 @@ const Vitrine: React.FC = () => {
               </div>
             </nav>
 
-            {/* Mobile menu button */}
-            <button className="lg:hidden text-gray-600 p-1.5 rounded-md hover:bg-gray-100">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
+            {/* Mobile menu button toggle */}
+            <button
+              className="lg:hidden text-gray-600 p-2"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
+
+          {/* Mobile Navigation Menu */}
+          {mobileMenuOpen && (
+            <div className="lg:hidden absolute top-full left-0 w-full bg-white border-b border-gray-200 py-4 px-4 shadow-xl flex flex-col space-y-4">
+              <a
+                href="#hero"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-gray-600 font-medium py-2 border-b border-gray-50"
+              >
+                Accueil
+              </a>
+              <a
+                href="#advantages"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-gray-600 font-medium py-2 border-b border-gray-50"
+              >
+                Avantages
+              </a>
+              <div className="flex items-center gap-3 py-2">
+                <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-white">
+                  {user?.prenom[0]} {user?.nom[0]}
+                </div>
+                <span className="text-sm font-semibold">
+                  {user?.prenom} {user?.nom}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="text-red-600 flex items-center gap-2 text-sm font-medium"
+              >
+                <LogOut className="w-4 h-4" /> Se déconnecter
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Hero Section compacte */}
-      {/* Hero Section améliorée */}
+      {/* Hero Section Responsive */}
       <section
         id="hero"
-        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-cyan-50/30 pt-30"
+        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-cyan-50/30 pt-24 pb-12"
       >
         <div className="container mx-auto px-4">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
-            {/* Content */}
-            <div className="lg:w-1/2 text-center lg:text-left">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 border border-cyan-200 shadow-sm mb-8">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
+            <div className="w-full lg:w-1/2 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 border border-cyan-200 shadow-sm mb-6 lg:mb-8">
                 <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-cyan-700">
+                <span className="text-xs md:text-sm font-medium text-cyan-700">
                   Plateforme de communication nouvelle génération
                 </span>
               </div>
 
-              <h1 className="text-4xl lg:text-6xl xl:text-7xl font-bold mb-6 leading-tight">
+              <h1 className="text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-6 leading-tight">
                 <span className="block text-slate-900">Communication</span>
                 <span className="bg-gradient-to-r from-cyan-500 to-pink-600 bg-clip-text text-transparent">
                   Réinventée
                 </span>
               </h1>
 
-              <p className="text-xl lg:text-2xl text-slate-600 mb-8 leading-relaxed max-w-2xl">
+              <p className="text-base md:text-lg lg:text-xl text-slate-600 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0">
                 Découvrez une plateforme unifiée qui fusionne messagerie
                 professionnelle et communication instantanée pour une
                 collaboration sans limites.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start ">
+              {/* Conteneur forcé en ligne (flex-row) même sur mobile */}
+              <div className="flex flex-row gap-2 sm:gap-4 justify-center lg:justify-start mt-4">
                 <a
                   href="/messaging/"
-                  className="group bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-cyan-500/25 flex items-center gap-3 justify-center"
+                  className="relative group bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-4 sm:px-8 py-3 md:py-4 rounded-2xl font-bold transition-all transform hover:scale-105 shadow-md flex items-center gap-2 sm:gap-3 justify-center flex-1 sm:flex-none whitespace-nowrap"
                 >
-                  <Mail className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
-                  Accéder à la Messagerie
+                  <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-xs sm:text-base">Messagerie</span>
+                  {unreadCountMessages > 0 && (
+                    <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 min-w-[18px] h-[18px] sm:min-w-[22px] sm:h-[22px] flex items-center justify-center bg-pink-500 text-white text-[9px] sm:text-[10px] font-black px-1 rounded-full border-2 border-white animate-bounce">
+                      {unreadCountMessages > 99 ? "99+" : unreadCountMessages}
+                    </span>
+                  )}
                 </a>
+
                 <a
                   href="/canal"
-                  className="group bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-pink-600/25 flex items-center gap-3 justify-center"
+                  className="relative group bg-gradient-to-r from-pink-600 to-pink-700 text-white px-4 sm:px-8 py-3 md:py-4 rounded-2xl font-bold transition-all transform hover:scale-105 shadow-md flex items-center gap-2 sm:gap-3 justify-center flex-1 sm:flex-none whitespace-nowrap"
                 >
-                  <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
-                  Accéder au Canal Chat
+                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-xs sm:text-base">Canal Chat</span>
+                  {unreadCountCommunication > 0 && (
+                    <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 min-w-[18px] h-[18px] sm:min-w-[22px] sm:h-[22px] flex items-center justify-center bg-cyan-500 text-white text-[9px] sm:text-[10px] font-black px-1 rounded-full border-2 border-white animate-bounce">
+                      {unreadCountCommunication > 99
+                        ? "99+"
+                        : unreadCountCommunication}
+                    </span>
+                  )}
                 </a>
               </div>
             </div>
 
-            {/* Visual grande taille */}
-            <div className="lg:w-1/2">
-              <div className="flex justify-center lg:justify-end">
+            <div className="w-full lg:w-1/2 flex justify-center">
+              <div className="relative w-full max-w-lg lg:max-w-none">
                 <img
                   src="/assets/img/communication.png"
-                  alt="Interface de communication EduLinkerPro"
-                  className="w-full max-w-2xl rounded-lg border border-gray-200 scale-110"
+                  alt="Interface"
+                  className="w-full h-auto  lg:scale-110"
                 />
               </div>
             </div>
           </div>
         </div>
       </section>
-      {/* Advantages Section compacte */}
-      <section id="advantages" className="py-12 bg-white">
+
+      {/* Advantages Grid Responsive */}
+      <section id="advantages" className="py-16 bg-white">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl lg:text-3xl font-bold mb-3">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">
               Pourquoi <span className="text-cyan-500">EduLinkerPro</span> ?
             </h2>
             <p className="text-gray-600 max-w-lg mx-auto text-sm">
@@ -218,7 +290,7 @@ const Vitrine: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
             {[
               {
                 icon: Zap,
@@ -261,111 +333,110 @@ const Vitrine: React.FC = () => {
             ].map((advantage, index) => (
               <div
                 key={index}
-                className="bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-cyan-300 transition-colors duration-200"
+                className="bg-gray-50 rounded-xl p-5 border border-gray-100 hover:border-cyan-200 hover:shadow-sm transition-all"
               >
                 <div
-                  className={`w-8 h-8 rounded-lg bg-${advantage.color}-50 flex items-center justify-center mb-2`}
+                  className={`w-10 h-10 rounded-lg bg-${advantage.color}-50 flex items-center justify-center mb-4`}
                 >
                   <advantage.icon
-                    className={`w-4 h-4 text-${advantage.color}-500`}
+                    className={`w-5 h-5 text-${advantage.color}-500`}
                   />
                 </div>
-
-                <h3 className="font-semibold mb-1 text-gray-800 text-sm">
+                <h3 className="font-bold mb-2 text-gray-800">
                   {advantage.title}
                 </h3>
-
-                <p className="text-gray-600 text-xs">{advantage.description}</p>
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  {advantage.description}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section compacte */}
-      <section className="py-12 bg-cyan-500">
+      {/* CTA Section Responsive */}
+      {/* CTA Section Responsive - Boutons toujours alignés */}
+      <section className="py-16 bg-cyan-500">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-2xl lg:text-3xl font-bold text-white mb-3">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-4">
             Prêt à transformer votre communication ?
           </h2>
-
-          <p className="text-cyan-100 mb-6 max-w-lg mx-auto text-sm">
+          <p className="text-cyan-100 mb-8 max-w-lg mx-auto text-sm md:text-base">
             Rejoignez des milliers d'Ecoles qui utilisent EduLinkerPro
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          {/* Suppression de flex-col pour forcer l'alignement horizontal */}
+          <div className="flex flex-row gap-2 sm:gap-4 justify-center items-center">
             <a
               href="/messaging/"
-              className="bg-white text-cyan-600 hover:bg-gray-100 px-5 py-2.5 rounded-md font-semibold transition-colors duration-200 flex items-center gap-2 justify-center text-sm"
+              className="bg-white text-cyan-600 px-3 sm:px-8 py-3 rounded-xl font-bold shadow-lg text-[10px] xs:text-xs sm:text-sm transition-transform hover:scale-105 whitespace-nowrap"
             >
-              <Mail className="w-4 h-4" />
-              Démarrer avec la Messagerie
+              Démarrer la Messagerie
             </a>
             <a
               href="/canal"
-              className="bg-transparent border border-white text-white hover:bg-white hover:text-cyan-600 px-5 py-2.5 rounded-md font-semibold transition-colors duration-200 flex items-center gap-2 justify-center text-sm"
+              className="bg-cyan-600 border border-white text-white px-3 sm:px-8 py-3 rounded-xl font-bold text-[10px] xs:text-xs sm:text-sm transition-all hover:bg-white hover:text-cyan-600 whitespace-nowrap"
             >
-              <MessageCircle className="w-4 h-4" />
               Essayer le Canal Chat
             </a>
           </div>
         </div>
       </section>
 
-      {/* Footer compact */}
-      <footer className="bg-gray-800 text-white py-8">
+      {/* Footer Responsive */}
+      <footer className="bg-gray-800 text-white py-12">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col lg:flex-row justify-between items-start gap-6 mb-6">
-            {/* Brand */}
-            <div className="flex-1 max-w-sm">
-              <div className="flex items-center space-x-2 mb-3">
+          {/* La grille reste intacte pour tablette et desktop */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+            {/* Bloc Logo : prend toute la largeur sur mobile */}
+            <div className="lg:col-span-2">
+              <div className="flex items-center space-x-2 mb-4">
                 <img
-                  src="/assets/img/edulinkerpro1.jpg"
-                  alt=""
+                  src="/assets/img/edulinkerpro.svg"
+                  alt="Logo"
                   className="w-10 h-10 rounded-full"
                 />
-                <span className="text-lg font-bold"> EduLinkerPro</span>
+                <span className="text-xl font-bold">EduLinkerPro</span>
               </div>
-              <p className="text-gray-400 text-xs">
-                Communication moderne unifiée pour les Ecoles.
+              <p className="text-gray-400 text-sm max-w-xs">
+                La solution de communication moderne et sécurisée pour les
+                établissements scolaires d'aujourd'hui.
               </p>
             </div>
 
-            {/* Links */}
-            <div className="flex flex-col sm:flex-row gap-6">
-              <div>
-                <h4 className="font-semibold mb-2 text-gray-200 text-sm">
-                  Services
-                </h4>
-                <ul className="space-y-1">
+            {/* --- BLOC SERVICES + SUPPORT : CÔTE À CÔTE SUR MOBILE --- */}
+            <div className="flex flex-row justify-between sm:contents">
+              {/* Services */}
+              <div className="flex-1 sm:flex-none">
+                <h4 className="font-semibold mb-4 text-gray-200">Services</h4>
+                <ul className="space-y-2 text-gray-400 text-sm">
                   <li>
                     <a
                       href="/messaging/"
-                      className="text-gray-400 hover:text-cyan-400 transition-colors duration-200 text-xs"
+                      className="hover:text-cyan-400 transition-colors whitespace-nowrap"
                     >
-                      Messagerie Professionnelle
+                      Messagerie Pro
                     </a>
                   </li>
                   <li>
                     <a
                       href="/canal"
-                      className="text-gray-400 hover:text-pink-400 transition-colors duration-200 text-xs"
+                      className="hover:text-pink-400 transition-colors whitespace-nowrap"
                     >
-                      Canal Chat Instantané
+                      Canal Chat
                     </a>
                   </li>
                 </ul>
               </div>
 
-              <div>
-                <h4 className="font-semibold mb-2 text-gray-200 text-sm">
-                  Support
-                </h4>
-                <ul className="space-y-1">
+              {/* Support */}
+              <div className="flex-1 sm:flex-none">
+                <h4 className="font-semibold mb-4 text-gray-200">Support</h4>
+                <ul className="space-y-2 text-gray-400 text-sm">
                   <li>
                     <a
                       href="#"
-                      className="text-gray-400 hover:text-cyan-400 transition-colors duration-200 text-xs"
+                      className="hover:text-cyan-400 whitespace-nowrap"
                     >
                       Centre d'aide
                     </a>
@@ -373,7 +444,7 @@ const Vitrine: React.FC = () => {
                   <li>
                     <a
                       href="#"
-                      className="text-gray-400 hover:text-pink-400 transition-colors duration-200 text-xs"
+                      className="hover:text-pink-400 whitespace-nowrap"
                     >
                       Contact
                     </a>
@@ -381,12 +452,11 @@ const Vitrine: React.FC = () => {
                 </ul>
               </div>
             </div>
+            {/* ------------------------------------------------------- */}
           </div>
 
-          <div className="border-t border-gray-700 pt-4 text-center text-gray-400">
-            <p className="text-xs">
-              &copy; 2025 EduLinkerPro. Tous droits réservés.
-            </p>
+          <div className="border-t border-gray-700 pt-8 text-center text-gray-500 text-xs">
+            &copy; 2025 EduLinkerPro. Tous droits réservés.
           </div>
         </div>
       </footer>

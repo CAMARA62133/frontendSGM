@@ -1,5 +1,10 @@
 import api from "../../api/axios.config";
-import type { ApiResponse, ChangePasswordByEmail, ChangePasswordByUserId, User } from "../models/User";
+import type {
+  ApiResponse,
+  ChangePasswordByEmail,
+  ChangePasswordByUserId,
+  User,
+} from "../models/User";
 
 /* -------------------------------------------------------------------------- */
 /*                                  AUTHENTIFICATION                           */
@@ -7,10 +12,25 @@ import type { ApiResponse, ChangePasswordByEmail, ChangePasswordByUserId, User }
 
 /**
  * 📝 Créer un nouvel utilisateur
- * @param data Données partielles de l'utilisateur
+ * @param data Données de l'utilisateur
+ * @param file Photo de profil (optionnel)
  */
-export const register = (data: Partial<User>) =>
-  api.post<ApiResponse>("/users/", data);
+export const register = (data: Partial<User>, file?: File) => {
+  const formData = new FormData();
+
+  // Ajouter toutes les données utilisateur au FormData
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null)
+      formData.append(key, String(value));
+  });
+
+  // Ajouter la photo si elle existe
+  if (file) formData.append("photo", file);
+
+  return api.post<ApiResponse>("/users/", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
 
 /**
  * 🔑 Connexion utilisateur
@@ -29,10 +49,9 @@ export const logout = () => api.get<ApiResponse>("/auth/logout");
  * @param data { email, newPassword? }
  */
 export const changePassword = async (
-  payload: ChangePasswordByEmail | ChangePasswordByUserId
-) => {
-  return api.post("/users/change-password", payload);
-};
+  payload: ChangePasswordByEmail | ChangePasswordByUserId,
+) => api.post("/users/change-password", payload);
+
 /**
  * 👤 Récupérer l'utilisateur connecté
  */
@@ -56,10 +75,23 @@ export const getUserById = (id: string) => api.get<ApiResponse>(`/users/${id}`);
 /**
  * ✏️ Mettre à jour un utilisateur
  * @param id ID de l'utilisateur
- * @param data Données à mettre à jour (partielles)
+ * @param data Données à mettre à jour
+ * @param file Nouvelle photo de profil (optionnel)
  */
-export const updateUser = (id: string, data: Partial<User>) =>
-  api.put<ApiResponse>(`/users/${id}`, data);
+export const updateUser = (id: string, data: Partial<User>, file?: File) => {
+  const formData = new FormData();
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null)
+      formData.append(key, String(value));
+  });
+
+  if (file) formData.append("photo", file);
+
+  return api.put<ApiResponse>(`/users/${id}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
 
 /**
  * 🔄 Activer / désactiver un utilisateur
@@ -75,11 +107,7 @@ export const toggleUser = (id: string) =>
 /**
  * 📥 Importer plusieurs utilisateurs depuis un fichier Excel ou CSV
  * @param file Fichier à importer (xlsx ou csv)
- * @returns ApiResponse avec le nombre d’utilisateurs importés et message de succès
- *
- * 💡 Fonctionne avec le backend configuré sur la route POST /users/import
- * 💡 Le fichier doit contenir les colonnes :
- *     type, nom, prenom, password, telephone, adresse, pays, region, etablissement
+ * @returns ApiResponse
  */
 export const importUsers = (file: File) => {
   const formData = new FormData();

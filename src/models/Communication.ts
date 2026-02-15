@@ -22,3 +22,19 @@ export interface CommunicationsResponse {
   success: boolean;
   data: Communication[];
 }
+
+export interface CountResponse {
+  success: boolean;
+  count: number;
+}
+export type CommunicationParams = {
+  channel?: string;
+  groupId?: number;
+  recipientId?: number;
+  userId?: number;
+};
+export interface UnreadByConversationResponse {
+  data: {
+    [key: string]: number;
+  };
+}

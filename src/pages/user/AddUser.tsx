@@ -281,6 +281,31 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
                 <option value="directeur">Directeur</option>
                 <option value="user">Utilisateur</option>
               </select>
+
+              {/* ------------------ */}
+              {/* Champ Photo de profil */}
+              {/* ------------------ */}
+              <label className="w-full col-span-2">
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-cyan-500 transition-colors cursor-pointer">
+                  {file ? (
+                    <span className="text-cyan-700 font-medium">
+                      {file.name}
+                    </span>
+                  ) : (
+                    "Cliquez pour sélectionner une photo de profil"
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      setFile(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center gap-4 p-4">
@@ -331,10 +356,10 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
               {loading
                 ? "Chargement..."
                 : userToEdit
-                ? "Modifier"
-                : mode === "manual"
-                ? "Enregistrer"
-                : "Importer"}
+                  ? "Modifier"
+                  : mode === "manual"
+                    ? "Enregistrer"
+                    : "Importer"}
             </button>
           </div>
         </form>

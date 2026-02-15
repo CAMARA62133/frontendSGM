@@ -109,17 +109,19 @@ const UserDetail: React.FC<Props> = ({ isOpen, onClose, user }) => {
           </div>
 
           {/* Avatar + Nom + Email */}
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-cyan-500 font-bold text-xl border-2 border-white">
-              {user.prenom[0]}
-              {user.nom[0]}
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold">
-                {user.prenom} {user.nom}
-              </h3>
-              <p className="text-cyan-100">{user.email}</p>
-            </div>
+          <div className="w-16 h-16 rounded-full border-2 border-white overflow-hidden flex items-center justify-center">
+            {user.photo ? (
+              <img
+                src={user.photo}
+                alt={`${user.prenom} ${user.nom}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="bg-white w-full h-full flex items-center justify-center text-cyan-500 font-bold text-xl">
+                {user.prenom[0]}
+                {user.nom[0]}
+              </div>
+            )}
           </div>
         </div>
 
@@ -129,7 +131,7 @@ const UserDetail: React.FC<Props> = ({ isOpen, onClose, user }) => {
           <div className="flex gap-3">
             <span
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${getStatusClass(
-                user.isActif
+                user.isActif,
               )}`}
             >
               <div
@@ -142,7 +144,7 @@ const UserDetail: React.FC<Props> = ({ isOpen, onClose, user }) => {
 
             <span
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${getTypeClass(
-                user.type
+                user.type,
               )}`}
             >
               {getTypeIcon(user.type)}
