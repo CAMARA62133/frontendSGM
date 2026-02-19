@@ -3,34 +3,36 @@ import type {
   ApiResponse,
   ChangePasswordByEmail,
   ChangePasswordByUserId,
-  User,
 } from "../models/User";
 
 /* -------------------------------------------------------------------------- */
 /*                                  AUTHENTIFICATION                           */
 /* -------------------------------------------------------------------------- */
 
+
+
 /**
  * 📝 Créer un nouvel utilisateur
- * @param data Données de l'utilisateur
- * @param file Photo de profil (optionnel)
+ * @param data FormData contenant tous les champs (y compris photo si besoin)
  */
-export const register = (data: Partial<User>, file?: File) => {
-  const formData = new FormData();
-
-  // Ajouter toutes les données utilisateur au FormData
-  Object.entries(data).forEach(([key, value]) => {
-    if (value !== undefined && value !== null)
-      formData.append(key, String(value));
-  });
-
-  // Ajouter la photo si elle existe
-  if (file) formData.append("photo", file);
-
-  return api.post<ApiResponse>("/users/", formData, {
+export const register = (data: FormData) => {
+  return api.post<ApiResponse>("/users/", data, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 };
+
+/**
+ * ✏️ Mettre à jour un utilisateur
+ * @param id ID de l'utilisateur
+ * @param data FormData contenant tous les champs à mettre à jour (y compris photo)
+ */
+export const updateUser = (id: string, data: FormData) => {
+  return api.put<ApiResponse>(`/users/${id}`, data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
+
 
 /**
  * 🔑 Connexion utilisateur
@@ -55,7 +57,7 @@ export const changePassword = async (
 /**
  * 👤 Récupérer l'utilisateur connecté
  */
-export const getCurrentUser = () => api.get<ApiResponse>("/users/me");
+export const getProfil = () => api.get<ApiResponse>("/auth/profil");
 
 /* -------------------------------------------------------------------------- */
 /*                                   UTILISATEURS                              */
@@ -72,26 +74,7 @@ export const getAllUsers = () => api.get<ApiResponse>("/users");
  */
 export const getUserById = (id: string) => api.get<ApiResponse>(`/users/${id}`);
 
-/**
- * ✏️ Mettre à jour un utilisateur
- * @param id ID de l'utilisateur
- * @param data Données à mettre à jour
- * @param file Nouvelle photo de profil (optionnel)
- */
-export const updateUser = (id: string, data: Partial<User>, file?: File) => {
-  const formData = new FormData();
 
-  Object.entries(data).forEach(([key, value]) => {
-    if (value !== undefined && value !== null)
-      formData.append(key, String(value));
-  });
-
-  if (file) formData.append("photo", file);
-
-  return api.put<ApiResponse>(`/users/${id}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-};
 
 /**
  * 🔄 Activer / désactiver un utilisateur

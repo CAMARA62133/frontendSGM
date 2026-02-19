@@ -35,7 +35,8 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
     etablissement: "",
     type: "user",
   });
-  const [file, setFile] = useState<File | null>(null); // Fichier pour import CSV/Excel
+  const [file, setFile] = useState<File | null>(null); // Pour l'importation (CSV/Excel)
+  const [photo, setPhoto] = useState<File | null>(null); // Pour la photo de profil
 
   // ----------------------------------
   // États d'interface
@@ -44,7 +45,7 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
     message: string;
     type: "success" | "error";
   } | null>(null);
-  const [loading, setLoading] = useState(false); // Indicateur de chargement pour le submit
+  const [loading, setLoading] = useState(false); 
 
   // ----------------------------------
   // Effet : pré-remplir le formulaire si édition
@@ -54,7 +55,7 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
       setUtilisateur({
         nom: userToEdit.nom,
         prenom: userToEdit.prenom,
-        email: "", // Ne pas pré-remplir email
+        email: userToEdit.email,
         telephone: userToEdit.telephone,
         adresse: userToEdit.adresse,
         pays: userToEdit.pays,
@@ -62,7 +63,7 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
         etablissement: userToEdit.etablissement,
         type: userToEdit.type,
       });
-      setMode("manual"); // Forcer le mode manuel pour édition
+      setMode("manual");
     }
   }, [userToEdit]);
 
@@ -70,7 +71,7 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
   // Handler : mise à jour des champs du formulaire
   // ----------------------------------
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setUtilisateur((prev) => ({ ...prev, [name]: value }));
@@ -88,72 +89,64 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
   // ----------------------------------
   // Handler : soumission du formulaire
   // ----------------------------------
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setToast(null); // Reset des messages
-    setLoading(true);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setToast(null);
+  setLoading(true);
 
-    try {
-      if (mode === "manual") {
-        // --- Edition d'utilisateur existant ---
-        if (userToEdit) {
-          await updateUser(userToEdit.id!, utilisateur);
-          setToast({
-            message: "Utilisateur mis à jour avec succès !",
-            type: "success",
-          });
-        }
-        // --- Création d'un nouvel utilisateur ---
-        else {
-          await register(utilisateur);
-          setToast({
-            message: "Utilisateur ajouté avec succès !",
-            type: "success",
-          });
-          // Reset du formulaire
-          setUtilisateur({
-            nom: "",
-            prenom: "",
-            email: "",
-            telephone: "",
-            adresse: "",
-            pays: "",
-            region: "",
-            etablissement: "",
-            type: "user",
-          });
-        }
-      }
-      // --- Import de fichiers CSV/Excel ---
-      else if (mode === "import") {
-        if (!file) {
-          setToast({
-            message: "Veuillez sélectionner un fichier Excel/CSV",
-            type: "error",
-          });
-          setLoading(false);
-          return;
-        }
-        const res = await importUsers(file);
-        setToast({
-          message: res.data.message || "Import effectué avec succès",
-          type: "success",
-        });
-        setFile(null);
-      }
+  try {
+    if (mode === "manual") {
+      const formData = new FormData();
 
-      // Fermer le modal après 1s
-      setTimeout(() => onClose(), 1000);
-    } catch (err) {
-      const error = err as AxiosError<{ message: string }>;
-      setToast({
-        message: error.response?.data?.message || "Une erreur est survenue",
-        type: "error",
+      // On ajoute les données texte
+      Object.entries(utilisateur).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, String(value));
+        }
       });
-    } finally {
-      setLoading(false);
+
+      // ICI : On utilise l'état "photo" pour l'image
+      if (photo) {
+        formData.append("photo", photo);
+      }
+
+      if (userToEdit) {
+        await updateUser(userToEdit.id!, formData);
+        setToast({ message: "Mis à jour avec succès !", type: "success" });
+      } else {
+        await register(formData);
+        setToast({ message: "Ajouté avec succès !", type: "success" });
+        setPhoto(null); // On vide la photo après succès
+      }
+    } else if (mode === "import") {
+      if (!file) {
+        setToast({
+          message: "Sélectionnez un fichier Excel/CSV",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+      // ICI : On utilise "file" pour l'importation
+      const res = await importUsers(file);
+      setToast({
+        message: res.data.message || "Import réussi",
+        type: "success",
+      });
+      setFile(null);
     }
-  };
+
+    setTimeout(() => onClose(), 1000);
+  } catch (err) {
+    const error = err as AxiosError<{ message: string }>;
+    setToast({
+      message: error.response?.data?.message || "Erreur",
+      type: "error",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ----------------------------------
   // Si le modal est fermé, ne rien afficher
@@ -285,11 +278,12 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
               {/* ------------------ */}
               {/* Champ Photo de profil */}
               {/* ------------------ */}
+  
               <label className="w-full col-span-2">
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-cyan-500 transition-colors cursor-pointer">
-                  {file ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-cyan-500 cursor-pointer">
+                  {photo ? (
                     <span className="text-cyan-700 font-medium">
-                      {file.name}
+                      {photo.name}
                     </span>
                   ) : (
                     "Cliquez pour sélectionner une photo de profil"
@@ -299,8 +293,8 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      setFile(e.target.files[0]);
+                    if (e.target.files?.[0]) {
+                      setPhoto(e.target.files[0]); // <--- On utilise setPhoto ici
                     }
                   }}
                   className="hidden"

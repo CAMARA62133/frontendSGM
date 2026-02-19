@@ -384,7 +384,7 @@ export default function MessagingLayout() {
             >
               {user?.photo ? (
                 <img
-                  src={user.photo}
+                  src={`${import.meta.env.VITE_API_URL}${user.photo}`}
                   alt="Avatar"
                   className="w-full h-full object-cover rounded-full"
                 />
@@ -415,8 +415,6 @@ export default function MessagingLayout() {
                     </p>
                   </div>
 
-    
-
                   {/* Accueil */}
                   <button
                     onClick={() => navigate("/vitrine")}
@@ -436,7 +434,6 @@ export default function MessagingLayout() {
               </>
             )}
           </div>
-
         </header>
 
         {/* Contenu principal */}

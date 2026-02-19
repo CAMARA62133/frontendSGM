@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Users, LogOut, ChevronDown, Menu, X, Home } from "lucide-react";
+import { Users, LogOut, Menu, X, Home } from "lucide-react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import AddUserModal from "./AddUser";
 import { useAuth } from "../../context/useAuth";
@@ -86,53 +86,52 @@ export default function AdminDashboardLayout() {
             </div>
           </div>
 
+        
           {/* Menu utilisateur */}
           <div className="relative">
-            {/* Bouton principal */}
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-gray-100 transition"
+              className="w-10 h-10 flex items-center justify-center 
+               rounded-full bg-pink-600 hover:bg-pink-700 
+               transition-colors duration-300 overflow-hidden" 
             >
-              <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold uppercase">
-                {(user?.prenom?.[0] || "").toUpperCase()}
-                {(user?.nom?.[0] || "").toUpperCase()}
-              </div>
+              {user?.photo ? (
+                <img
+                  src={`${import.meta.env.VITE_API_URL}${user.photo}`} 
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Si l'image ne charge pas (404), on affiche les initiales
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.parentElement!.innerHTML = `<span class="text-white font-bold text-lg">${(user?.prenom?.[0] || "").toUpperCase()}${(user?.nom?.[0] || "").toUpperCase()}</span>`;
+                  }}
+                />
+              ) : (
+                <span className="text-white font-bold text-lg">
+                  {(user?.prenom?.[0] || "").toUpperCase()}
+                  {(user?.nom?.[0] || "").toUpperCase()}
+                </span>
+              )}
 
-              <span className="text-sm font-semibold text-gray-800">
-                {user?.prenom} {user?.nom}
-              </span>
-
-              <ChevronDown
-                className={`w-4 h-4 text-gray-500 transition-transform ${
-                  userMenuOpen ? "rotate-180" : ""
-                }`}
-              />
+              {/* Pastille "En ligne" */}
+              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </button>
 
-            {/* Menu déroulant */}
             {userMenuOpen && (
               <>
-                {/* Overlay */}
                 <div
-                  className="fixed inset-0"
+                  className="fixed inset-0 z-40"
                   onClick={() => setUserMenuOpen(false)}
                 />
-
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border py-3 z-50">
-                  {/* Profil */}
-                  <div className="flex items-center gap-3 px-4 py-2">
-                    <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold uppercase">
-                      {(user?.prenom?.[0] || "").toUpperCase()}
-                      {(user?.nom?.[0] || "").toUpperCase()}
-                    </div>
-
-                    <span className="text-sm font-semibold">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-md border border-gray-200 py-1 z-50 shadow-lg">
+                  <div className="px-3 py-2 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
                       {user?.prenom} {user?.nom}
-                    </span>
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {user?.email}
+                    </p>
                   </div>
-
-                  {/* Séparateur */}
-                  <div className="border-t my-2" />
 
                   {/* Accueil */}
                   <button
@@ -142,19 +141,18 @@ export default function AdminDashboardLayout() {
                     <Home className="w-4 h-4" />
                     Accueil
                   </button>
-
-                  {/* Déconnexion */}
                   <button
                     onClick={handleLogout}
-                    className="w-full px-4 py-2 text-red-600 flex items-center gap-2 text-sm font-medium hover:bg-red-50 transition"
+                    className="flex items-center gap-2 w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 text-sm"
                   >
-                    <LogOut className="w-4 h-4" />
-                    Se déconnecter
+                    <LogOut className="w-3 h-3" />
+                    <span>Se déconnecter</span>
                   </button>
                 </div>
               </>
             )}
           </div>
+
         </header>
 
         {/* Content Area */}

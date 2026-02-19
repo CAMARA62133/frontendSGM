@@ -1,28 +1,18 @@
-import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, AlertTriangle, Info, X } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { CheckCircle, AlertTriangle, X, AlertCircle, Info } from "lucide-react";
 
-/**
- * 🔹 Props du composant Toast
- */
 interface ToastProps {
-  /** Message à afficher */
   message: string;
-  /** Type de notification */
   type?: "success" | "error" | "warning" | "info";
-  /** Durée en ms avant fermeture automatique */
   duration?: number;
-  /** Position de la notification */
   position?: "top-center" | "top-right" | "bottom-center" | "bottom-right";
-  /** Afficher ou non la barre de progression */
   showProgress?: boolean;
-  /** Callback lorsqu'on ferme le toast */
-  onClose: () => void;
+  onClose: (isConfirm?: boolean) => void; // ✅ Typé pour accepter l'argument
+  onConfirm?: () => void;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
 
-/**
- * 🔹 Composant Toast
- * Affiche une notification avec animation, type et barre de progression
- */
 export default function Toast({
   message,
   type = "success",
@@ -30,133 +20,133 @@ export default function Toast({
   position = "top-center",
   showProgress = true,
   onClose,
+  onConfirm,
+  confirmLabel = "Rester",
+  cancelLabel = "Quitter",
 }: ToastProps) {
-  const [progress, setProgress] = useState(100); // pour la barre de progression
-  const [isVisible, setIsVisible] = useState(false); // état pour animation apparition/disparition
+  const [progress, setProgress] = useState(100);
+  const [isVisible, setIsVisible] = useState(false);
+  const actionTaken = useRef(false);
 
-  /**
-   * 🔹 useEffect principal
-   * - Affiche le toast
-   * - Décrémente la barre de progression si activée
-   * - Ferme automatiquement après "duration"
-   */
+  // ✅ triggerClose accepte maintenant l'argument et le transmet à onClose
+  const triggerClose = useCallback(
+    (isConfirm: boolean = false) => {
+      setIsVisible(false);
+      setTimeout(() => onClose(isConfirm), 300);
+    },
+    [onClose],
+  );
+
   useEffect(() => {
-    setIsVisible(true); // affiche le toast
+    setIsVisible(true);
+    actionTaken.current = false;
 
-    // Gestion du toast si durée > 0
     if (duration > 0) {
-      if (showProgress) {
-        // Intervalle pour réduire la barre de progression
-        const interval = setInterval(() => {
-          setProgress((prev) => Math.max(prev - 100 / (duration / 50), 0));
-        }, 50);
+      const interval = setInterval(() => {
+        setProgress((prev) => Math.max(prev - 100 / (duration / 10), 0));
+      }, 10);
 
-        // Timeout pour fermer le toast
-        const timer = setTimeout(() => {
-          setIsVisible(false);
-          setTimeout(onClose, 300); // attendre l'animation avant de supprimer
-        }, duration);
+      const timer = setTimeout(() => {
+        if (!actionTaken.current) triggerClose(false);
+      }, duration);
 
-        return () => {
-          clearInterval(interval);
-          clearTimeout(timer);
-        };
-      } else {
-        // Si pas de barre de progression
-        const timer = setTimeout(() => {
-          setIsVisible(false);
-          setTimeout(onClose, 300);
-        }, duration);
-        return () => clearTimeout(timer);
-      }
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timer);
+      };
     }
-  }, [duration, showProgress, onClose]);
+  }, [duration, triggerClose]);
 
-  /**
-   * 🔹 Sélection de l'icône selon le type
-   */
-  const getIcon = () => {
-    switch (type) {
-      case "success":
-        return <CheckCircle className="w-5 h-5" />;
-      case "error":
-        return <XCircle className="w-5 h-5" />;
-      case "warning":
-        return <AlertTriangle className="w-5 h-5" />;
-      case "info":
-        return <Info className="w-5 h-5" />;
-      default:
-        return <CheckCircle className="w-5 h-5" />;
-    }
+  const handleConfirm = () => {
+    actionTaken.current = true;
+    onConfirm?.();
+    triggerClose(true); // ✅ Informe le parent que c'est une confirmation
   };
 
-  /**
-   * 🔹 Styles selon le type de notification
-   */
-  const getTypeStyles = () =>
-    ({
-      success: "bg-emerald-500 border-emerald-400",
-      error: "bg-red-500 border-red-400",
-      warning: "bg-amber-500 border-amber-400",
-      info: "bg-blue-500 border-blue-400",
-    }[type]);
+  const handleManualCancel = () => {
+    actionTaken.current = true;
+    triggerClose(false); // ✅ Informe le parent que c'est une annulation
+  };
 
-  /**
-   * 🔹 Styles selon la position du toast
-   */
-  const getPositionStyles = () =>
-    ({
-      "top-center": "top-5 left-1/2 -translate-x-1/2",
-      "top-right": "top-5 right-5",
-      "bottom-center": "bottom-5 left-1/2 -translate-x-1/2",
-      "bottom-right": "bottom-5 right-5",
-    }[position]);
+  // Couleurs plus douces (Pastel léger avec texte foncé pour le contraste)
+  const bgStyles = {
+    success: "bg-white border-emerald-200 text-emerald-900",
+    error: "bg-white border-red-200 text-red-900",
+    warning: "bg-white border-amber-200 text-amber-900",
+    info: "bg-white border-blue-200 text-blue-900",
+  };
 
-  /**
-   * 🔹 Fonction pour fermer manuellement le toast
-   */
-  const handleClose = () => {
-    setIsVisible(false); // déclenche animation de disparition
-    setTimeout(onClose, 300); // supprime le toast après animation
+  // Couleurs pour les icônes uniquement
+  const iconColors = {
+    success: "text-emerald-500",
+    error: "text-red-500",
+    warning: "text-amber-500",
+    info: "text-blue-500",
+  };
+
+  const Icon = {
+    success: CheckCircle,
+    error: AlertCircle,
+    warning: AlertTriangle,
+    info: Info,
+  }[type];
+
+  const positionStyles = {
+    "top-center": "top-5 left-1/2 -translate-x-1/2",
+    "top-right": "top-5 right-5",
+    "bottom-center": "bottom-5 left-1/2 -translate-x-1/2",
+    "bottom-right": "bottom-5 right-5",
   };
 
   return (
     <div
-      className={`fixed z-50 flex items-center max-w-sm w-full mx-4 px-4 py-3 rounded-lg shadow-lg border text-white backdrop-blur-sm transition-all duration-300 ease-in-out transform
-        ${
-          isVisible
-            ? "translate-y-0 opacity-100 scale-100"
-            : position?.includes("top")
-            ? "-translate-y-2 opacity-0 scale-95"
-            : "translate-y-2 opacity-0 scale-95"
-        } 
-        ${getTypeStyles()} ${getPositionStyles()}`}
+      className={`fixed z-[9999] flex flex-col max-w-sm w-full mx-4 rounded-xl shadow-lg border transition-all duration-300 ease-in-out transform
+        ${isVisible ? "translate-y-0 opacity-100 scale-100" : (position.includes("top") ? "-translate-y-4" : "translate-y-4") + " opacity-0 scale-95"} 
+        ${bgStyles[type]} 
+        ${positionStyles[position]}`}
       role="alert"
-      aria-live="polite"
-      aria-atomic="true"
     >
-      {/* Contenu du toast */}
-      <div className="flex items-center space-x-3 flex-1">
-        {/* Icône */}
-        <span className="flex-shrink-0">{getIcon()}</span>
-        {/* Message */}
-        <span className="text-sm font-medium leading-relaxed">{message}</span>
+      <div className="flex items-center p-4 space-x-3">
+        {/* Icône avec sa propre couleur */}
+        <span className={`flex-shrink-0 ${iconColors[type]}`}>
+          <Icon className="w-5 h-5" />
+        </span>
+
+        <div className="flex-1">
+          <p className="text-sm font-medium leading-snug">{message}</p>
+
+          {type === "warning" && (
+            <div className="flex gap-3 mt-3">
+              <button
+                onClick={handleConfirm}
+                className="px-3 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
+              >
+                {confirmLabel}
+              </button>
+              <button
+                onClick={handleManualCancel}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                {cancelLabel}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Bouton X plus discret */}
+        <button
+          onClick={handleManualCancel}
+          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Bouton pour fermer */}
-      <button
-        onClick={handleClose}
-        className="flex-shrink-0 ml-3 p-1 rounded-full hover:bg-white/20 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white/50"
-        aria-label="Fermer la notification"
-      >
-        <X className="w-4 h-4" />
-      </button>
-
-      {/* Barre de progression */}
+      {/* Barre de progression ultra-fine et discrète */}
       {showProgress && duration > 0 && (
-        <div className="absolute bottom-0 left-0 h-1 bg-white/30 rounded-b-lg overflow-hidden">
+        <div className="h-1 w-full bg-gray-50 rounded-b-xl overflow-hidden">
           <div
-            className="h-full bg-white transition-all duration-75 ease-linear"
+            className={`h-full transition-all duration-[10ms] ease-linear ${iconColors[type].replace("text", "bg")}`}
             style={{ width: `${progress}%` }}
           />
         </div>

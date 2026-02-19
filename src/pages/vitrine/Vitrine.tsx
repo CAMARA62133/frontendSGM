@@ -113,7 +113,7 @@ const Vitrine: React.FC = () => {
                 >
                   {user?.photo ? (
                     <img
-                      src={user.photo}
+                      src={`${import.meta.env.VITE_API_URL}${user.photo}`}
                       alt="Avatar"
                       className="w-full h-full object-cover rounded-full"
                     />
@@ -170,36 +170,70 @@ const Vitrine: React.FC = () => {
           </div>
 
           {/* Mobile Navigation Menu */}
+          {/* Mobile Navigation Menu */}
           {mobileMenuOpen && (
-            <div className="lg:hidden absolute top-full left-0 w-full bg-white border-b border-gray-200 py-4 px-4 shadow-xl flex flex-col space-y-4">
-              <a
-                href="#hero"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-600 font-medium py-2 border-b border-gray-50"
-              >
-                Accueil
-              </a>
-              <a
-                href="#advantages"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-600 font-medium py-2 border-b border-gray-50"
-              >
-                Avantages
-              </a>
-              <div className="flex items-center gap-3 py-2">
-                <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-white">
-                  {user?.prenom[0]} {user?.nom[0]}
+            <div className="lg:hidden absolute top-full left-0 w-full bg-white border-b border-gray-200 py-6 px-6 shadow-2xl flex flex-col space-y-6 animate-in slide-in-from-top duration-300">
+              {/* Liens de navigation */}
+              <nav className="flex flex-col space-y-4">
+                <a
+                  href="#hero"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-gray-700 font-semibold text-lg py-2 flex items-center justify-between border-b border-gray-50 hover:text-pink-600 transition-colors"
+                >
+                  Accueil
+                </a>
+                <a
+                  href="#advantages"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-gray-700 font-semibold text-lg py-2 flex items-center justify-between border-b border-gray-50 hover:text-pink-600 transition-colors"
+                >
+                  Avantages
+                </a>
+              </nav>
+
+              {/* Section Utilisateur (Plus élégante) */}
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-4 mb-6">
+                  {/* Avatar avec position relative pour la pastille */}
+                  <div className="relative w-14 h-14">
+                    <div className="w-full h-full rounded-full bg-pink-600 flex items-center justify-center overflow-hidden shadow-md">
+                      {user?.photo ? (
+                        <img
+                          src={`${import.meta.env.VITE_API_URL}${user.photo}`}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-bold text-xl">
+                          {user?.prenom?.[0].toUpperCase()}
+                          {user?.nom?.[0].toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    {/* Pastille En Ligne - Correction du positionnement */}
+                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-sm"></div>
+                  </div>
+
+                  {/* Infos Utilisateur */}
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-900 text-lg leading-none">
+                      {user?.prenom} {user?.nom}
+                    </span>
+                    <span className="text-sm text-gray-500 mt-1 italic">
+                      {user?.type}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-sm font-semibold">
-                  {user?.prenom} {user?.nom}
-                </span>
+
+                {/* Bouton Déconnexion - Style bouton large */}
+                <button
+                  onClick={handleLogout}
+                  className="w-full bg-red-50 text-red-600 flex items-center justify-center gap-3 py-4 rounded-2xl font-bold active:scale-95 transition-all shadow-sm"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Se déconnecter
+                </button>
               </div>
-              <button
-                onClick={handleLogout}
-                className="text-red-600 flex items-center gap-2 text-sm font-medium"
-              >
-                <LogOut className="w-4 h-4" /> Se déconnecter
-              </button>
             </div>
           )}
         </div>

@@ -1,105 +1,3 @@
-// // src/context/AuthProvider.tsx
-// import { useState, useCallback, useEffect, type ReactNode } from "react";
-// import { useNavigate } from "react-router-dom";
-// import * as userService from "../services/userService";
-// import { AuthContext } from "./AuthContext";
-// import type { User } from "../models/User";
-// import type { AxiosError } from "axios";
-
-// interface AuthProviderProps {
-//   children: ReactNode;
-// }
-
-// export const AuthProvider = ({ children }: AuthProviderProps) => {
-//   const navigate = useNavigate();
-
-//   const [user, setUser] = useState<User | null>(null);
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [error, setError] = useState<string | null>(null);
-
-//   // -------------------- Vérification initiale + rafraîchissement --------------------
-//   const fetchUser = useCallback(async () => {
-//     try {
-//       const res = await userService.getCurrentUser(); // backend doit renvoyer { user }
-//       if (res.data.user) setUser(res.data.user);
-//       else setUser(null);
-//     } catch {
-//       setUser(null);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   }, []);
-
-//   useEffect(() => {
-//     fetchUser();
-//     // Rafraîchir toutes les 4 minutes pour token 5 min d'inactivité
-//     const interval = setInterval(fetchUser, 2 * 60 * 1000);
-//     return () => clearInterval(interval);
-//   }, [fetchUser]);
-
-//   // -------------------- Redirection selon type --------------------
-//   const redirectBasedOnType = useCallback(
-//     (type: User["type"]) => {
-//       const routes: Record<User["type"], string> = {
-//         admin: "/admin",
-//         directeur: "/admin",
-//         user: "/messaging",
-//       };
-//       navigate(routes[type] || "/login", { replace: true });
-//     },
-//     [navigate]
-//   );
-
-//   // -------------------- Connexion --------------------
-//   const login = async (email: string, password: string) => {
-//     setIsLoading(true);
-//     setError(null);
-
-//     try {
-//       const res = await userService.login({ email, password });
-//       const loggedUser = res.data.user as User;
-
-//       setUser(loggedUser);
-//       redirectBasedOnType(loggedUser.type);
-//     } catch (err) {
-//       const axiosError = err as AxiosError<{ message: string }>;
-//       setError(
-//         axiosError?.response?.data.message || "Email ou mot de passe incorrect"
-//       );
-//       setUser(null);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   // -------------------- Déconnexion --------------------
-// const logout = async () => {
-//   setIsLoading(true);
-//   try {
-//     await userService.logout();
-//   } catch {
-//     // on ignore volontairement l'erreur
-//   }
-//   setUser(null);
-//   setIsLoading(false);
-//   navigate("/login", { replace: true });
-// };
-
-
-//   return (
-//     <AuthContext.Provider
-//       value={{ user, isLoading, error, login, logout, setUser }}
-//     >
-//       {children}
-//     </AuthContext.Provider>
-//   );
-// };
-
-
-
-
-
-
 import {
   useState,
   useCallback,
@@ -110,47 +8,111 @@ import {
 import { useNavigate } from "react-router-dom";
 import * as userService from "../services/userService";
 import { AuthContext } from "./AuthContext";
-import type { User } from "../models/User";
-import type { AxiosError } from "axios";
 import Toast from "../components/ui/Toast";
+import type { AxiosError } from "axios";
+import type { User } from "../models/User";
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
+
+const INACTIVITY_LIMIT = 15 * 60 * 1000; 
+const WARNING_BEFORE = 1 * 60 * 1000;
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const navigate = useNavigate();
-
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
-    type: "success" | "error" | "warning";
+    type: "success" | "error" | "warning" | "info";
+    duration: number;
   } | null>(null);
 
-  const userRef = useRef<User | null>(null);
-  userRef.current = user;
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // -------------------- Déconnexion --------------------
+  const stopTimers = useCallback(() => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+  }, []);
+
   const logout = useCallback(async () => {
-    setIsLoading(true);
+    stopTimers();
+    setToast(null);
     try {
       await userService.logout();
-    } catch {
-      //
+    } catch (err) {
+      console.error("Logout error", err);
+    } finally {
+      setUser(null);
+      navigate("/login", { replace: true });
     }
-    setUser(null);
-    setIsLoading(false);
-    navigate("/login", { replace: true });
-  }, [navigate]);
+  }, [navigate, stopTimers]);
 
-  // -------------------- Vérification initiale + rafraîchissement --------------------
+  const resetInactivityTimer = useCallback(() => {
+    stopTimers();
+    if (user) {
+      warningTimerRef.current = setTimeout(() => {
+        setToast({
+          message: "Session expirée bientôt. Rester connecté ?",
+          type: "warning",
+          duration: WARNING_BEFORE,
+        });
+      }, INACTIVITY_LIMIT - WARNING_BEFORE);
+
+      inactivityTimerRef.current = setTimeout(() => {
+        logout();
+      }, INACTIVITY_LIMIT);
+    }
+  }, [user, logout, stopTimers]);
+
+  const handleStayConnected = async () => {
+    setToast(null);
+    stopTimers();
+    try {
+      await userService.getProfil();
+      resetInactivityTimer();
+    } catch {
+      logout();
+    }
+  };
+
+  const resetRef = useRef(resetInactivityTimer);
+  useEffect(() => {
+    resetRef.current = resetInactivityTimer;
+  }, [resetInactivityTimer]);
+
+  useEffect(() => {
+    if (!user) return;
+    const events = [
+      "mousedown",
+      "mousemove",
+      "keypress",
+      "scroll",
+      "touchstart",
+    ];
+    const handleActivity = () => {
+      setToast((curr) => {
+        if (!curr || curr.type !== "warning") resetRef.current();
+        return curr;
+      });
+    };
+    events.forEach((e) => window.addEventListener(e, handleActivity));
+    resetRef.current();
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, handleActivity));
+      stopTimers();
+    };
+  }, [user, stopTimers]);
+
   const fetchUser = useCallback(async () => {
     try {
-      const res = await userService.getCurrentUser();
-      if (res.data.user) setUser(res.data.user);
-      else setUser(null);
+      const res = await userService.getProfil();
+      const userData = res.data.user || res.data;
+      if (userData && (userData as User).email) setUser(userData as User);
     } catch {
       setUser(null);
     } finally {
@@ -158,77 +120,83 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, []);
 
-useEffect(() => {
-  fetchUser();
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
 
-  const warningTimer = setInterval(async () => {
-    if (userRef.current) {
-      // 1️⃣ Affiche le toast warning avant expiration
-      setToast({
-        message: "Votre session expire dans 1 minute !",
-        type: "warning",
-      });
+const login = async (email: string, password: string) => {
+  setIsLoading(true);
+  setError(null);
+  setToast(null);
 
-      // 2️⃣ Timer pour déconnexion après 1 minute
-      const logoutTimer = setTimeout(() => {
-        logout();
-      }, 60 * 1000); // 1 minute après le toast
-
-      return () => clearTimeout(logoutTimer);
-    }
-
-    await fetchUser();
-  }, 14* 60 * 1000); // vérifier toutes les 14 minutes (ou selon la durée du token)
-
-  return () => clearInterval(warningTimer);
-}, [fetchUser, logout]);
-
-
-  // -------------------- Redirection selon type --------------------
-  const redirectBasedOnType = useCallback(
-    (type: User["type"]) => {
-      const routes: Record<User["type"], string> = {
-        admin: "/admin",
-        directeur: "/admin",
-        user: "/vitrine",
-      };
-      navigate(routes[type] || "/login", { replace: true });
-    },
-    [navigate]
-  );
-
-  // -------------------- Connexion --------------------
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await userService.login({ email, password });
-      const loggedUser = res.data.user as User;
-      setUser(loggedUser);
-      redirectBasedOnType(loggedUser.type);
-    } catch (err) {
-      const axiosError = err as AxiosError<{ message: string }>;
-      setError(
-        axiosError?.response?.data.message || "Email ou mot de passe incorrect"
+  try {
+    const res = await userService.login({ email, password });
+    if (res.data?.user) {
+      setUser(res.data.user);
+      const role = res.data.user.type.toLowerCase();
+      navigate(
+        role === "admin" || role === "directeur" ? "/admin" : "/vitrine",
+        { replace: true },
       );
-      setUser(null);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  } catch (err) {
+    const axiosError = err as AxiosError<{ message: string }>;
+    const status = axiosError.response?.status;
+    let msg = "";
 
-  return (
-    <AuthContext.Provider
-      value={{ user, isLoading, error, login, logout, setUser }}
-    >
-      {children}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-    </AuthContext.Provider>
-  );
+    if (status === 401 || status === 403) {
+      msg =
+        "Email ou mot de passe incorrect. Veuillez vérifier vos identifiants.";
+    } else if (status === 500) {
+      msg =
+        "Notre service rencontre actuellement une difficulté technique. Veuillez réessayer dans quelques instants.";
+    } else if (!navigator.onLine) {
+      msg =
+        "Il semble que vous soyez déconnecté. Vérifiez votre connexion internet.";
+    } else {
+      msg =
+        axiosError.response?.data?.message ||
+        "Une erreur inattendue est survenue.";
+    }
+
+    setError(msg);
+
+    // On déclenche le toast ici
+    setToast({
+      message: msg,
+      type: "error", // Le type est 'error'
+      duration: 5000,
+    });
+
+    throw err;
+  } finally {
+    setIsLoading(false);
+  }
+};
+return (
+  <AuthContext.Provider
+    value={{ user, isLoading, error, login, logout, setUser }}
+  >
+    {children}
+
+    {toast && (
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        duration={toast.duration}
+        position="top-center" 
+        showProgress={true}
+        // ✅ On ajoute l'argument isConfirm ici
+        onClose={(isConfirm) => {
+          // On déconnecte UNIQUEMENT si c'est un warning ET que l'utilisateur n'a PAS confirmé
+          if (toast.type === "warning" && isConfirm !== true) {
+            logout();
+          }
+          setToast(null);
+        }}
+        onConfirm={handleStayConnected}
+      />
+    )}
+  </AuthContext.Provider>
+);
 };

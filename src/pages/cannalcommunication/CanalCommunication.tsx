@@ -75,13 +75,10 @@ const CanalCommunication: React.FC = () => {
     }
   }, []);
 
-
-  
-   useEffect(() => {
-     const stop = autoRefresh(fetchUnreadMessages, 5000);
-     return () => stop();
-   }, [fetchUnreadMessages]);
-
+  useEffect(() => {
+    const stop = autoRefresh(fetchUnreadMessages, 5000);
+    return () => stop();
+  }, [fetchUnreadMessages]);
 
   // ------------------ Fetch utilisateurs ------------------
   useEffect(() => {
@@ -562,7 +559,7 @@ const CanalCommunication: React.FC = () => {
             >
               {user?.photo ? (
                 <img
-                  src={user.photo}
+                  src={`${import.meta.env.VITE_API_URL}${user.photo}`}
                   alt="Avatar"
                   className="w-full h-full object-cover rounded-full"
                 />
@@ -613,8 +610,6 @@ const CanalCommunication: React.FC = () => {
             )}
           </div>
         </header>
-
-        {/* --- ZONE MESSAGES --- */}
         {/* --- ZONE MESSAGES --- */}
         <div
           className={`flex-1 overflow-y-auto p-6 bg-gray-50/50 transition-all duration-700 ease-in-out ${
@@ -804,7 +799,7 @@ const CanalCommunication: React.FC = () => {
               <button
                 className="px-4 py-2 text-sm rounded-lg border border-gray-300 
              text-gray-700 hover:bg-gray-100 transition"
-                onClick={closeModal} // 🔹 RESET complet
+                onClick={closeModal}
               >
                 Annuler
               </button>
@@ -817,8 +812,6 @@ const CanalCommunication: React.FC = () => {
         : "bg-pink-500 hover:bg-pink-600 text-white"
     }`}
                 onClick={handleSaveGroup}
-                // On ne met pas forcément de 'disabled' pour permettre au toast d'erreur
-                // de s'afficher quand l'utilisateur clique.
               >
                 {editingGroup ? "Enregistrer" : "Créer"}
               </button>
