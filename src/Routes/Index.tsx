@@ -20,13 +20,14 @@ import DraftsPage from "../pages/message/drafts/DraftsPage";
 import ArchivedPage from "../pages/message/archived/ArchivedPage";
 import FavoritesPage from "../pages/message/favorite/FavoritesPage";
 import TrashPage from "../pages/message/trash/TrashPage";
-import MessageDetailPage from "../pages/message/MessageDetailPage";
+
 
 // Dashboards élèves / parents
 import DashboardEleve from "../pages/user/DashboardEleve";
 import ParentStudentDashboard from "../pages/user/ParentStudentDashboard";
 import CanalCommunication from "../pages/cannalcommunication/CanalCommunication";
 import Vitrine from "../pages/vitrine/Vitrine";
+import MessageDetailPage from "../pages/message/MessageDetailPage";
 
 /**
  * Composant principal de gestion des routes de l'application
