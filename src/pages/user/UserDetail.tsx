@@ -112,7 +112,7 @@ const UserDetail: React.FC<Props> = ({ isOpen, onClose, user }) => {
           <div className="w-16 h-16 rounded-full border-2 border-white overflow-hidden flex items-center justify-center">
             {user.photo ? (
               <img
-                src={user.photo}
+                src={`${import.meta.env.VITE_API_URL}${user.photo}`}
                 alt={`${user.prenom} ${user.nom}`}
                 className="w-full h-full object-cover"
               />

@@ -598,6 +598,7 @@ const CanalCommunication: React.FC = () => {
                     <Home className="w-4 h-4" />
                     Accueil
                   </button>
+
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-2 w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 text-sm"

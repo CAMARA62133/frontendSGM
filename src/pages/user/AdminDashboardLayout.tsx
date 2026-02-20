@@ -1,9 +1,10 @@
-
 import { useState } from "react";
 import { Users, LogOut, Menu, X, Home } from "lucide-react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import AddUserModal from "./AddUser";
+import UserDetail from "./UserDetail"; 
 import { useAuth } from "../../context/useAuth";
+import type { User } from "../../models/User";
 
 const initialMenuItems = [
   { name: "Utilisateurs", href: "/admin/users", icon: Users },
@@ -19,6 +20,18 @@ export default function AdminDashboardLayout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
 
+  // États pour la gestion du profil utilisateur
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  const handleOpenProfile = () => {
+    if (user) {
+      setSelectedUser(user as unknown as User);
+      setIsDetailModalOpen(true);
+      setUserMenuOpen(false);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -28,10 +41,19 @@ export default function AdminDashboardLayout() {
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-sans">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex w-64 lg:w-72 bg-white border-r border-gray-100 flex-col">
-        <div className="h-20 flex items-center px-8 border-b border-gray-50">
-          <h2 className="text-xl lg:text-2xl font-extrabold bg-gradient-to-r from-cyan-600 to-cyan-400 bg-clip-text text-transparent truncate">
-            {user?.type === "admin" ? "AdminPro" : "DirecteurPro"}
-          </h2>
+        <div className="h-20 flex items-center px-8 border-b border-gray-100 bg-white">
+          <div className="flex items-center gap-3">
+            {/* Barre d'accentuation violette */}
+            <div className="w-1 h-6 bg-pink-600 rounded-full"></div>
+
+            <h2 className="text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">
+              {user?.type === "admin" ? (
+                <span className="text-cyan-600">Administrateur</span>
+              ) : (
+                <span className="text-indigo-600">Directeur</span>
+              )}
+            </h2>
+          </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-6 px-4">
@@ -82,26 +104,24 @@ export default function AdminDashboardLayout() {
             </button>
             <div className="hidden md:block">
               <h1 className="text-sm text-gray-400 font-medium">Bienvenue,</h1>
-              <p className="text-lg font-bold text-gray-900">Tableau de Bord</p>
+              <p className="text-lg font-bold text-pink-600">Tableau de Bord</p>
             </div>
           </div>
 
-        
           {/* Menu utilisateur */}
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="w-10 h-10 flex items-center justify-center 
-               rounded-full bg-pink-600 hover:bg-pink-700 
-               transition-colors duration-300 overflow-hidden" 
+                rounded-full bg-pink-600 hover:bg-pink-700 
+                transition-colors duration-300 overflow-hidden"
             >
               {user?.photo ? (
                 <img
-                  src={`${import.meta.env.VITE_API_URL}${user.photo}`} 
+                  src={`${import.meta.env.VITE_API_URL}${user.photo}`}
                   alt="Avatar"
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // Si l'image ne charge pas (404), on affiche les initiales
                     e.currentTarget.style.display = "none";
                     e.currentTarget.parentElement!.innerHTML = `<span class="text-white font-bold text-lg">${(user?.prenom?.[0] || "").toUpperCase()}${(user?.nom?.[0] || "").toUpperCase()}</span>`;
                   }}
@@ -113,7 +133,6 @@ export default function AdminDashboardLayout() {
                 </span>
               )}
 
-              {/* Pastille "En ligne" */}
               <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </button>
 
@@ -133,9 +152,18 @@ export default function AdminDashboardLayout() {
                     </p>
                   </div>
 
-                  {/* Accueil */}
                   <button
-                    onClick={() => navigate("/vitrine")}
+                    onClick={handleOpenProfile}
+                    className="w-full px-4 py-2 flex items-center gap-2 text-sm font-medium text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 transition"
+                  >
+                    <Users className="w-4 h-4" />
+                    Mon Profil
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate("/vitrine");
+                      setUserMenuOpen(false);
+                    }}
                     className="w-full px-4 py-2 flex items-center gap-2 text-sm font-medium text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 transition"
                   >
                     <Home className="w-4 h-4" />
@@ -152,7 +180,6 @@ export default function AdminDashboardLayout() {
               </>
             )}
           </div>
-
         </header>
 
         {/* Content Area */}
@@ -163,7 +190,7 @@ export default function AdminDashboardLayout() {
         </main>
       </div>
 
-      {/* Sidebar Mobile (Améliorée) */}
+      {/* Sidebar Mobile */}
       <div
         className={`fixed inset-0 z-[60] md:hidden ${sidebarOpen ? "visible" : "invisible"}`}
       >
@@ -202,9 +229,19 @@ export default function AdminDashboardLayout() {
         </aside>
       </div>
 
+      {/* Modals */}
       <AddUserModal
         isOpen={isAddUserOpen}
         onClose={() => setIsAddUserOpen(false)}
+      />
+
+      <UserDetail
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedUser(null);
+        }}
+        user={selectedUser}
       />
     </div>
   );

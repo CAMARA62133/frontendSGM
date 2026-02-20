@@ -81,7 +81,7 @@ export const getUserById = (id: string) => api.get<ApiResponse>(`/users/${id}`);
  * @param id ID de l'utilisateur
  */
 export const toggleUser = (id: string) =>
-  api.patch<ApiResponse>(`/users/toggle/${id}`);
+  api.patch<ApiResponse>(`/auth/toggle/${id}`);
 
 /* -------------------------------------------------------------------------- */
 /*                       IMPORTATION UTILISATEURS EXCEL/CSV                     */

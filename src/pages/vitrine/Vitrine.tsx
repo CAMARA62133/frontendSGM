@@ -11,6 +11,7 @@ import {
   Heart,
   Menu,
   X,
+
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -103,6 +104,14 @@ const Vitrine: React.FC = () => {
               >
                 Avantages
               </a>
+              {user?.type === "admin" && (
+                <button
+                  onClick={() => navigate("/admin/users")}
+                  className="w-full px-4 py-2 flex items-center gap-2 text-sm font-medium text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 transition"
+                >
+                  Admin dashboard
+                </button>
+              )}
 
               <div className="relative">
                 <button
@@ -170,7 +179,6 @@ const Vitrine: React.FC = () => {
           </div>
 
           {/* Mobile Navigation Menu */}
-          {/* Mobile Navigation Menu */}
           {mobileMenuOpen && (
             <div className="lg:hidden absolute top-full left-0 w-full bg-white border-b border-gray-200 py-6 px-6 shadow-2xl flex flex-col space-y-6 animate-in slide-in-from-top duration-300">
               {/* Liens de navigation */}
@@ -189,6 +197,14 @@ const Vitrine: React.FC = () => {
                 >
                   Avantages
                 </a>
+                {user?.type === "admin" && (
+                  <button
+                    onClick={() => navigate("/admin/users")}
+                    className="w-full px-4 py-2 flex items-center gap-2 text-sm font-medium text-gray-700 hover:bg-cyan-50 hover:text-cyan-700 transition"
+                  >
+                    Admin dashboard
+                  </button>
+                )}
               </nav>
 
               {/* Section Utilisateur (Plus élégante) */}
