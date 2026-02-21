@@ -19,6 +19,7 @@ export interface User {
   telephone?: string; // Numéro de téléphone (optionnel)
   type: Type; // Rôle de l'utilisateur (admin, directeur, user)
   isActif?: boolean; // Indique si l'utilisateur est actif
+  doitChangerPassword?: boolean;
   adresse?: string; // Adresse complète (optionnel)
   pays: string; // Pays de l'utilisateur (obligatoire côté modèle)
   region: string; // Région de l'utilisateur (obligatoire côté modèle)

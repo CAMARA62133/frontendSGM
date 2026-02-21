@@ -6,10 +6,6 @@ import { Eye, EyeOff, ArrowLeft, Mail, Lock, Shield } from "lucide-react";
 import Toast from "../../components/ui/Toast";
 import { changePassword } from "../../services/userService";
 
-type ChangePasswordPayload =
-  | { userId: string; newPassword: string }
-  | { email: string; newPassword?: string };
-
 export default function ChangePassword() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -20,6 +16,7 @@ export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<1 | 2>(userIdFromUrl ? 2 : 1);
+  const [userId, setUserId] = useState<string | null>(userIdFromUrl || null);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
@@ -33,25 +30,24 @@ export default function ChangePassword() {
 
     try {
       if (step === 1) {
-        const payload: ChangePasswordPayload = { email };
-        const response = await changePassword(payload);
-        setToast({ message: response.data.message!, type: "success" });
+        // Étape 1 : Vérifier l'email
+        const response = await changePassword({ email });
+        setToast({ message: response.data.message, type: "success" });
+        setUserId(response.data.userId); // récupère l'ID pour étape 2
         setStep(2);
       } else {
-        const payload: ChangePasswordPayload = userIdFromUrl
-          ? { userId: userIdFromUrl, newPassword }
-          : { email, newPassword };
+        // Étape 2 : Modifier le mot de passe
+        if (!userId)
+          throw new Error(
+            "ID utilisateur manquant pour modifier le mot de passe",
+          );
 
-        const response = await changePassword(payload);
-        setToast({ message: response.data.message!, type: "success" });
+        const response = await changePassword({ userId, newPassword });
+        setToast({ message: response.data.message, type: "success" });
 
         setEmail("");
         setNewPassword("");
-        if (!userIdFromUrl) setStep(1);
-
-        setTimeout(() => {
-          navigate("/login");
-        }, 1500);
+        setTimeout(() => navigate("/login"), 1500);
       }
     } catch (err) {
       const error = err as AxiosError<{ message: string }>;
@@ -67,16 +63,10 @@ export default function ChangePassword() {
 
   return (
     <AuthLayout
-      title={
-        step === 1
-          ? "Réinitialisation"
-          : userIdFromUrl
-          ? "Nouveau mot de passe"
-          : "Nouveau mot de passe"
-      }
+      title={step === 1 ? "Réinitialisation" : "Nouveau mot de passe"}
     >
       {/* Back Button */}
-      {!userIdFromUrl && step === 2 && (
+      {step === 2 && !userIdFromUrl && (
         <button
           onClick={() => setStep(1)}
           className="flex items-center gap-2 text-cyan-600 hover:text-cyan-700 text-sm mb-4 px-2 py-1.5 rounded-lg transition-all hover:bg-cyan-50/50 group"
@@ -101,7 +91,7 @@ export default function ChangePassword() {
               />
             </div>
             <p className="text-xs text-gray-500 px-1">
-              Lien de réinitialisation envoyé par email
+              Vérification de l'adresse email...
             </p>
           </div>
         )}

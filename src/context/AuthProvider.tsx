@@ -16,8 +16,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-
-const INACTIVITY_LIMIT = 15 * 60 * 1000; 
+const INACTIVITY_LIMIT = 15 * 60 * 1000;
 const WARNING_BEFORE = 1 * 60 * 1000;
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
@@ -124,79 +123,101 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     fetchUser();
   }, [fetchUser]);
 
-const login = async (email: string, password: string) => {
-  setIsLoading(true);
-  setError(null);
-  setToast(null);
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+    setToast(null);
 
-  try {
-    const res = await userService.login({ email, password });
-    if (res.data?.user) {
-      setUser(res.data.user);
-      const role = res.data.user.type.toLowerCase();
-      navigate(
-        role === "admin" || role === "directeur" ? "/admin" : "/vitrine",
-        { replace: true },
-      );
+    try {
+      const res = await userService.login({ email, password });
+
+      // 🔹 Cas normal : utilisateur connecté
+      if (res.data?.user) {
+        setUser(res.data.user);
+        const role = res.data.user.type.toLowerCase();
+        navigate(
+          role === "admin" || role === "directeur" ? "/admin" : "/vitrine",
+          { replace: true },
+        );
+
+        setToast({
+          message: "Connexion réussie !",
+          type: "success",
+          duration: 3000,
+        });
+      }
+    } catch (err) {
+      const axiosError = err as AxiosError<{
+        message: string;
+        userId?: string;
+      }>;
+      const status = axiosError.response?.status;
+      let msg = "";
+
+      if (status === 401 || status === 400) {
+        msg =
+          "Email ou mot de passe incorrect. Veuillez vérifier vos identifiants.";
+      } else if (status === 403 && axiosError.response?.data?.userId) {
+        // 🔹 L'utilisateur doit changer son mot de passe
+        msg =
+          axiosError.response.data.message ||
+          "Vous devez changer votre mot de passe avant de continuer.";
+
+        setToast({
+          message: msg,
+          type: "error",
+          duration: 5000,
+        });
+
+        // 🔹 Redirection vers le formulaire de changement de mot de passe
+        navigate(`/change-password?userId=${axiosError.response.data.userId}`, {
+          replace: true,
+        });
+
+        return; // Stoppe le flux ici
+      } else if (status === 500) {
+        msg =
+          "Notre service rencontre actuellement une difficulté technique. Veuillez réessayer dans quelques instants.";
+      } else if (!navigator.onLine) {
+        msg =
+          "Il semble que vous soyez déconnecté. Vérifiez votre connexion internet.";
+      } else {
+        msg =
+          axiosError.response?.data?.message ||
+          "Une erreur inattendue est survenue.";
+      }
+
+      setError(msg);
+      setToast({ message: msg, type: "error", duration: 5000 });
+
+      throw err;
+    } finally {
+      setIsLoading(false);
     }
-  } catch (err) {
-    const axiosError = err as AxiosError<{ message: string }>;
-    const status = axiosError.response?.status;
-    let msg = "";
+  };
 
-    if (status === 401 || status === 403) {
-      msg =
-        "Email ou mot de passe incorrect. Veuillez vérifier vos identifiants.";
-    } else if (status === 500) {
-      msg =
-        "Notre service rencontre actuellement une difficulté technique. Veuillez réessayer dans quelques instants.";
-    } else if (!navigator.onLine) {
-      msg =
-        "Il semble que vous soyez déconnecté. Vérifiez votre connexion internet.";
-    } else {
-      msg =
-        axiosError.response?.data?.message ||
-        "Une erreur inattendue est survenue.";
-    }
+  return (
+    <AuthContext.Provider
+      value={{ user, isLoading, error, login, logout, setUser }}
+    >
+      {children}
 
-    setError(msg);
-
-    // On déclenche le toast ici
-    setToast({
-      message: msg,
-      type: "error", // Le type est 'error'
-      duration: 5000,
-    });
-
-    throw err;
-  } finally {
-    setIsLoading(false);
-  }
-};
-return (
-  <AuthContext.Provider
-    value={{ user, isLoading, error, login, logout, setUser }}
-  >
-    {children}
-
-    {toast && (
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        duration={toast.duration}
-        position="top-center" 
-        showProgress={true}
-        // ✅ On ajoute l'argument isConfirm ici
-        onClose={(isConfirm) => {
-          // On déconnecte UNIQUEMENT si c'est un warning ET que l'utilisateur n'a PAS confirmé
-          if (toast.type === "warning" && isConfirm !== true) {
-            logout();
-          }
-          setToast(null);
-        }}
-        onConfirm={handleStayConnected}
-      />
-    )}
-  </AuthContext.Provider>
-);
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          duration={toast.duration}
+          position="top-center"
+          showProgress={true}
+          onClose={(isConfirm) => {
+            if (toast.type === "warning" && isConfirm !== true) {
+              logout();
+            }
+            setToast(null);
+          }}
+          onConfirm={handleStayConnected}
+        />
+      )}
+    </AuthContext.Provider>
+  );
 };
