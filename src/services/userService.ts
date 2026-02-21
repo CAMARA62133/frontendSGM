@@ -59,19 +59,9 @@ export const changePassword = async (
  */
 export const getProfil = () => api.get<ApiResponse>("/auth/profil");
 
-/* -------------------------------------------------------------------------- */
-/*                                   UTILISATEURS                              */
-/* -------------------------------------------------------------------------- */
 
-/**
- * 📋 Récupérer tous les utilisateurs
- */
 export const getAllUsers = () => api.get<ApiResponse>("/users");
 
-/**
- * 📌 Récupérer un utilisateur par ID
- * @param id ID de l'utilisateur
- */
 export const getUserById = (id: string) => api.get<ApiResponse>(`/users/${id}`);
 
 
