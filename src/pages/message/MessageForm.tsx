@@ -42,10 +42,13 @@ const MessageFormModal: React.FC<MessageFormModalProps> = ({
   const [isSending, setIsSending] = useState(false);
   const isProcessing = isSaving || isSending;
   const [isSent, setIsSent] = useState(false);
-const navigate = useNavigate();
+  const navigate = useNavigate();
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "warning" | "info";
+    onConfirm?: () => void;
+    confirmLabel?: string;
+    cancelLabel?: string;
   } | null>(null);
 
   const [sujet, setSujet] = useState("");
@@ -60,7 +63,6 @@ const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
 
-  // 🔹 Gestion du contenu éditable
   const handleMessageChange = useCallback(() => {
     if (messageRef.current) {
       setContenu(messageRef.current.innerHTML);
@@ -73,10 +75,9 @@ const navigate = useNavigate();
       handleMessageChange();
       messageRef.current?.focus();
     },
-    [handleMessageChange]
+    [handleMessageChange],
   );
 
-  // 🔹 Ajouter un destinataire
   const addRecipient = (newEmail: string) => {
     const emailTrim = newEmail.trim().toLowerCase();
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -100,7 +101,7 @@ const navigate = useNavigate();
       const filtered = users.filter(
         (u) =>
           u.email.toLowerCase().includes(value.toLowerCase()) &&
-          !destinataires.includes(u.email)
+          !destinataires.includes(u.email),
       );
       setFilteredUsers(filtered);
     } else {
@@ -124,104 +125,99 @@ const navigate = useNavigate();
     setPiecesJointes((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // 🔹 Fonction pour sauvegarder ou envoyer
-const handleSaveOrSend = useCallback(
-  async (estBrouillon: boolean) => {
-    if (!estBrouillon) {
-      if (!sujet.trim()) {
-        setToast({ message: "Veuillez renseigner un sujet.", type: "warning" });
-        return;
-      }
-      if (destinataires.length === 0) {
-        setToast({
-          message: "Ajoutez au moins un destinataire.",
-          type: "warning",
-        });
-        return;
-      }
-
-      // Confirmation avant envoi
-      const confirmSend = window.confirm(
-        "Êtes-vous sûr de vouloir envoyer ce message ?"
-      );
-      if (!confirmSend) return;
-    }
-
-    const setProcessingState = estBrouillon ? setIsSaving : setIsSending;
-
-    try {
-      setProcessingState(true);
-
-      const formData = new FormData();
-      formData.append("sujet", sujet);
-      formData.append("contenu", contenu);
-      formData.append("estBrouillon", estBrouillon.toString());
-      destinataires.forEach((d) => formData.append("destinataires", d));
-      piecesJointes.forEach((file) => formData.append("piecesJointes", file));
-
-      // 🔹 Toujours envoyer messageId si c'est un brouillon existant ou envoi
-      if (initialMessage?.id) {
-        formData.append("messageId", initialMessage.id);
+  const handleSaveOrSend = useCallback(
+    async (estBrouillon: boolean) => {
+      if (!estBrouillon) {
+        if (!sujet.trim()) {
+          setToast({
+            message: "Veuillez renseigner un sujet.",
+            type: "warning",
+          });
+          return;
+        }
+        if (destinataires.length === 0) {
+          setToast({
+            message: "Ajoutez au moins un destinataire.",
+            type: "warning",
+          });
+          return;
+        }
       }
 
-      // 🔹 Gestion threadId pour reply/forward
-      if (mode === "reply" || mode === "forward") {
-        formData.append("mode", mode);
-        formData.append("threadId", initialMessage?.id || "");
-      } else if (threadId) {
-        formData.append("threadId", threadId);
+      const setProcessingState = estBrouillon ? setIsSaving : setIsSending;
+
+      try {
+        setProcessingState(true);
+
+        const formData = new FormData();
+        formData.append("sujet", sujet);
+        formData.append("contenu", contenu);
+        formData.append("estBrouillon", estBrouillon.toString());
+        destinataires.forEach((d) => formData.append("destinataires", d));
+        piecesJointes.forEach((file) => formData.append("piecesJointes", file));
+
+        if (initialMessage?.id) {
+          formData.append("messageId", initialMessage.id);
+        }
+
+        if (mode === "reply" || mode === "forward") {
+          formData.append("mode", mode);
+          formData.append("threadId", initialMessage?.id || "");
+        } else if (threadId) {
+          formData.append("threadId", threadId);
+        }
+
+        await envoyerMessage(formData);
+
+        if (estBrouillon) {
+          setToast({ message: "Brouillon sauvegardé 💾", type: "success" });
+          setTimeout(() => {
+            navigate("/messaging/trash");
+          }, 500);
+        } else {
+          setToast({
+            message: "Message envoyé avec succès 🎉",
+            type: "success",
+          });
+          setIsSent(true);
+          onSendSuccess?.();
+          onClose();
+        }
+      } catch (err) {
+        const axiosError = err as AxiosError<ErrorResponse>;
+        const errorMessage = axiosError?.response?.data?.message;
+
+        if (errorMessage?.includes("emailsInvalides")) {
+          const invalidEmails =
+            axiosError.response?.data?.emailsInvalides || [];
+          setToast({
+            message: `Destinataires invalides: ${invalidEmails.join(", ")}`,
+            type: "error",
+          });
+        } else {
+          setToast({
+            message: errorMessage || "Erreur lors de l'opération.",
+            type: "error",
+          });
+        }
+      } finally {
+        setProcessingState(false);
       }
+    },
+    [
+      sujet,
+      contenu,
+      destinataires,
+      piecesJointes,
+      mode,
+      initialMessage,
+      threadId,
+      onClose,
+      onSendSuccess,
+      navigate,
+    ],
+  );
 
-      await envoyerMessage(formData);
-
-      if (estBrouillon) {
-        setToast({ message: "Brouillon sauvegardé 💾", type: "success" });
-        // 🔹 Redirection vers /messaging/trash après 500ms pour laisser le toast s'afficher
-        setTimeout(() => {
-          navigate("/messaging/trash");
-        }, 500);
-      } else {
-        setToast({ message: "Message envoyé avec succès 🎉", type: "success" });
-        setIsSent(true);
-        onSendSuccess?.();
-        onClose();
-      }
-    } catch (err) {
-      const axiosError = err as AxiosError<ErrorResponse>;
-      const errorMessage = axiosError?.response?.data?.message;
-
-      if (errorMessage?.includes("emailsInvalides")) {
-        const invalidEmails = axiosError.response?.data?.emailsInvalides || [];
-        setToast({
-          message: `Destinataires invalides: ${invalidEmails.join(", ")}`,
-          type: "error",
-        });
-      } else {
-        setToast({
-          message: errorMessage || "Erreur lors de l'opération.",
-          type: "error",
-        });
-      }
-    } finally {
-      setProcessingState(false);
-    }
-  },
-  [
-    sujet,
-    contenu,
-    destinataires,
-    piecesJointes,
-    mode,
-    initialMessage,
-    threadId,
-    onClose,
-    onSendSuccess,
-    navigate
-  ]
-);
-
-
-  // 🔹 Initialisation du formulaire
   useEffect(() => {
     if (!isOpen) {
       setSujet("");
@@ -238,20 +234,17 @@ const handleSaveOrSend = useCallback(
 
     if (initialMessage) {
       const isDraft = initialMessage.estBrouillon;
-
-      // Sujet
       if (!isDraft && initialMessage.sujet) {
         defaultSujet =
           mode === "reply"
             ? `Re: ${initialMessage.sujet}`
             : mode === "forward"
-            ? `Tr: ${initialMessage.sujet}`
-            : initialMessage.sujet;
+              ? `Tr: ${initialMessage.sujet}`
+              : initialMessage.sujet;
       } else {
         defaultSujet = initialMessage.sujet || defaultSujet;
       }
 
-      // Contenu
       if (mode === "reply") {
         const originalSenderEmail =
           (initialMessage.expediteur as User)?.email || "";
@@ -268,21 +261,21 @@ const handleSaveOrSend = useCallback(
         defaultDestinataires = Array.isArray(initialRecipient)
           ? initialRecipient
           : initialRecipient
-          ? [initialRecipient]
-          : [];
+            ? [initialRecipient]
+            : [];
       } else if (isDraft) {
         defaultContenu = initialMessage.contenu || "";
         defaultDestinataires =
           initialMessage.destinataires?.map((d) =>
-            typeof d === "string" ? d : d.email
+            typeof d === "string" ? d : d.email,
           ) || [];
       }
     } else {
       defaultDestinataires = Array.isArray(initialRecipient)
         ? initialRecipient
         : initialRecipient
-        ? [initialRecipient]
-        : [];
+          ? [initialRecipient]
+          : [];
     }
 
     setSujet(defaultSujet);
@@ -291,7 +284,6 @@ const handleSaveOrSend = useCallback(
     if (messageRef.current) messageRef.current.innerHTML = defaultContenu;
   }, [isOpen, initialMessage, initialRecipient, initialSubject, mode]);
 
-  // 🔹 Fetch users
   useEffect(() => {
     if (!isOpen) return;
     const fetchUsers = async () => {
@@ -311,7 +303,7 @@ const handleSaveOrSend = useCallback(
     fetchUsers();
   }, [isOpen]);
 
-  // 🔹 Gestion fermeture
+  // ✅ Version finale handleClose utilisant le Toast interactif
   const handleClose = useCallback(() => {
     if (isSent || isProcessing) return;
 
@@ -322,14 +314,13 @@ const handleSaveOrSend = useCallback(
       piecesJointes.length > 0;
 
     if (hasContent) {
-      const shouldSave = window.confirm(
-        "Voulez-vous sauvegarder ce message en brouillon ?"
-      );
-      if (shouldSave) {
-        handleSaveOrSend(true).finally(onClose);
-      } else {
-        onClose();
-      }
+      setToast({
+        message: "Le message contient du contenu. Fermer sans sauvegarder ?",
+        type: "warning", 
+        confirmLabel: "Oui, fermer",
+        cancelLabel: "Annuler",
+        onConfirm: () => onClose(),
+      });
     } else {
       onClose();
     }
@@ -340,20 +331,18 @@ const handleSaveOrSend = useCallback(
     contenu,
     destinataires,
     piecesJointes,
-    handleSaveOrSend,
     onClose,
   ]);
-
   if (!isOpen) return null;
 
   const currentTitle =
     mode === "reply"
       ? "Répondre"
       : mode === "forward"
-      ? "Transférer"
-      : initialMessage?.estBrouillon
-      ? "Modifier brouillon"
-      : "Nouveau message";
+        ? "Transférer"
+        : initialMessage?.estBrouillon
+          ? "Modifier brouillon"
+          : "Nouveau message";
 
   return (
     <>
@@ -432,7 +421,7 @@ const handleSaveOrSend = useCallback(
                     (u) =>
                       u.type !== "admin" &&
                       u.type !== "directeur" &&
-                      u.id !== user!.id
+                      u.id !== user!.id,
                   )
                   .map((u) => (
                     <div
@@ -585,10 +574,13 @@ const handleSaveOrSend = useCallback(
           message={toast.message}
           type={toast.type}
           onClose={() => setToast(null)}
+          onConfirm={toast.onConfirm}
+          confirmLabel={toast.confirmLabel}
+          cancelLabel={toast.cancelLabel}
         />
       )}
     </>
   );
-};
+};;
 
 export default MessageFormModal;

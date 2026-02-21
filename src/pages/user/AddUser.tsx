@@ -1,29 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Save, ArrowLeft, X } from "lucide-react";
+import { Save, ArrowLeft, X, AlertCircle } from "lucide-react";
 import Toast from "../../components/ui/Toast";
-import { register, importUsers, updateUser } from "../../services/userService";
+import { register, updateUser } from "../../services/userService";
 import type { AxiosError } from "axios";
 import type { User } from "../../models/User";
 
-// ======================================
-// Props du composant
-// ======================================
 interface Props {
-  isOpen: boolean; // Indique si le modal est ouvert
-  onClose: () => void; // Fonction pour fermer le modal
-  userToEdit?: User; // Utilisateur à modifier (optionnel)
+  isOpen: boolean;
+  onClose: () => void;
+  userToEdit?: User;
 }
 
-// ======================================
-// Composant principal
-// ======================================
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
 const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
-  // ----------------------------------
-  // États du formulaire
-  // ----------------------------------
-  const [mode, setMode] = useState<"manual" | "import">("manual"); // Mode manuel ou import
   const [utilisateur, setUtilisateur] = useState<Partial<User>>({
     nom: "",
     prenom: "",
@@ -35,41 +27,27 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
     etablissement: "",
     type: "user",
   });
-  const [file, setFile] = useState<File | null>(null); // Pour l'importation (CSV/Excel)
-  const [photo, setPhoto] = useState<File | null>(null); // Pour la photo de profil
 
-  // ----------------------------------
-  // États d'interface
-  // ----------------------------------
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
-  const [loading, setLoading] = useState(false); 
 
-  // ----------------------------------
-  // Effet : pré-remplir le formulaire si édition
-  // ----------------------------------
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     if (userToEdit) {
-      setUtilisateur({
-        nom: userToEdit.nom,
-        prenom: userToEdit.prenom,
-        email: userToEdit.email,
-        telephone: userToEdit.telephone,
-        adresse: userToEdit.adresse,
-        pays: userToEdit.pays,
-        region: userToEdit.region,
-        etablissement: userToEdit.etablissement,
-        type: userToEdit.type,
-      });
-      setMode("manual");
+      setUtilisateur(userToEdit);
+      if (userToEdit.photo) {
+        setPreview(`${import.meta.env.VITE_API_URL}${userToEdit.photo}`);
+      }
     }
   }, [userToEdit]);
 
-  // ----------------------------------
-  // Handler : mise à jour des champs du formulaire
-  // ----------------------------------
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
@@ -77,35 +55,58 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
     setUtilisateur((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ----------------------------------
-  // Handler : sélection d'un fichier pour import
-  // ----------------------------------
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    setFileError(null);
+
+    if (!selected) return;
+
+    if (selected.size > MAX_FILE_SIZE) {
+      setFileError("La photo est trop lourde (max 5 Mo)");
+      setToast({
+        message: "Le fichier dépasse la limite de 5MB",
+        type: "error",
+      });
+      e.target.value = "";
+      setPhoto(null);
+      return;
     }
+
+    if (!["image/jpeg", "image/png", "image/jpg"].includes(selected.type)) {
+      setFileError("Format non supporté (JPG ou PNG uniquement)");
+      return;
+    }
+
+    setPhoto(selected);
+    setPreview(URL.createObjectURL(selected));
   };
 
-  // ----------------------------------
-  // Handler : soumission du formulaire
-  // ----------------------------------
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setToast(null);
-  setLoading(true);
+  const removePhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPhoto(null);
+    setPreview(null);
+    setFileError(null);
+  };
 
-  try {
-    if (mode === "manual") {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (photo && photo.size > MAX_FILE_SIZE) {
+      setToast({ message: "L'image est trop volumineuse", type: "error" });
+      return;
+    }
+
+    setLoading(true);
+    setToast(null);
+
+    try {
       const formData = new FormData();
-
-      // On ajoute les données texte
       Object.entries(utilisateur).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           formData.append(key, String(value));
         }
       });
 
-      // ICI : On utilise l'état "photo" pour l'image
       if (photo) {
         formData.append("photo", photo);
       }
@@ -116,249 +117,227 @@ const handleSubmit = async (e: React.FormEvent) => {
       } else {
         await register(formData);
         setToast({ message: "Ajouté avec succès !", type: "success" });
-        setPhoto(null); // On vide la photo après succès
       }
-    } else if (mode === "import") {
-      if (!file) {
-        setToast({
-          message: "Sélectionnez un fichier Excel/CSV",
-          type: "error",
-        });
-        setLoading(false);
-        return;
-      }
-      // ICI : On utilise "file" pour l'importation
-      const res = await importUsers(file);
+
+      setTimeout(() => onClose(), 1000);
+    } catch (err) {
+      const error = err as AxiosError<{ message: string }>;
       setToast({
-        message: res.data.message || "Import réussi",
-        type: "success",
+        message:
+          error.response?.data?.message || "Erreur lors de l'enregistrement",
+        type: "error",
       });
-      setFile(null);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setTimeout(() => onClose(), 1000);
-  } catch (err) {
-    const error = err as AxiosError<{ message: string }>;
-    setToast({
-      message: error.response?.data?.message || "Erreur",
-      type: "error",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // ----------------------------------
-  // Si le modal est fermé, ne rien afficher
-  // ----------------------------------
   if (!isOpen) return null;
 
-  // ======================================
-  // Rendu du modal
-  // ======================================
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        {/* Header du modal */}
-        <div className="bg-cyan-500 rounded-t-2xl px-6 py-5 text-white relative flex justify-between items-center">
-          <h2 className="text-2xl font-bold">
-            {userToEdit ? "Modifier utilisateur" : "Ajouter un utilisateur"}
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-sm">
+      {/* Ajustement de la largeur (w-full) et de la hauteur max pour le scroll mobile */}
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+        {/* HEADER - Ajustement du padding et de la taille du texte sur mobile */}
+        <div className="bg-cyan-500 px-4 sm:px-6 py-3 sm:py-4 text-white flex justify-between items-center shrink-0">
+          <h2 className="text-lg sm:text-2xl font-bold truncate mr-2">
+            {userToEdit ? "Modifier utilisateur" : "Ajouter utilisateur"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+            className="p-1.5 sm:p-2 bg-white rounded-full hover:bg-gray-100 transition shrink-0"
           >
-            <X size={20} className="text-gray-600" />
+            <X size={18} className="text-gray-600" />
           </button>
         </div>
 
-        {/* Sélecteur de mode */}
-        <div className="flex justify-center gap-4 p-4 border-b border-gray-200">
-          <button
-            onClick={() => setMode("manual")}
-            className={`px-6 py-3 rounded-xl font-semibold transition-colors ${
-              mode === "manual"
-                ? "bg-cyan-500 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            Ajouter/Modifier manuellement
-          </button>
-          {!userToEdit && (
-            <button
-              onClick={() => setMode("import")}
-              className={`px-6 py-3 rounded-xl font-semibold transition-colors ${
-                mode === "import"
-                  ? "bg-pink-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+        {/* FORM - Ajout d'un overflow-y-auto pour que le contenu défile si l'écran est petit */}
+        <form
+          onSubmit={handleSubmit}
+          className="p-4 sm:p-6 space-y-4 sm:y-6 overflow-y-auto grow"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <input
+              name="nom"
+              value={utilisateur.nom || ""}
+              onChange={handleChange}
+              placeholder="Nom"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300
+             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
+             outline-none shadow-sm hover:shadow-md transition
+             text-sm sm:text-base"
+              required
+            />
+            <input
+              name="prenom"
+              value={utilisateur.prenom || ""}
+              onChange={handleChange}
+              placeholder="Prénom"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300
+             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
+             outline-none shadow-sm hover:shadow-md transition
+             text-sm sm:text-base"
+              required
+            />
+            <input
+              name="email"
+              type="email"
+              value={utilisateur.email || ""}
+              onChange={handleChange}
+              placeholder="Email"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300
+             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
+             outline-none shadow-sm hover:shadow-md transition
+             text-sm sm:text-base"
+            />
+            <input
+              name="telephone"
+              value={utilisateur.telephone || ""}
+              onChange={handleChange}
+              placeholder="Téléphone"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300
+             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
+             outline-none shadow-sm hover:shadow-md transition
+             text-sm sm:text-base"
+            />
+            <input
+              name="adresse"
+              value={utilisateur.adresse || ""}
+              onChange={handleChange}
+              placeholder="Adresse"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300
+             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
+             outline-none shadow-sm hover:shadow-md transition
+             text-sm sm:text-base"
+            />
+            <input
+              name="pays"
+              value={utilisateur.pays || ""}
+              onChange={handleChange}
+              placeholder="Pays"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300
+             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
+             outline-none shadow-sm hover:shadow-md transition
+             text-sm sm:text-base"
+              required
+            />
+            <input
+              name="region"
+              value={utilisateur.region || ""}
+              onChange={handleChange}
+              placeholder="Région"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300
+             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
+             outline-none shadow-sm hover:shadow-md transition
+             text-sm sm:text-base"
+              required
+            />
+            <input
+              name="etablissement"
+              value={utilisateur.etablissement || ""}
+              onChange={handleChange}
+              placeholder="Établissement"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300
+             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
+             outline-none shadow-sm hover:shadow-md transition
+             text-sm sm:text-base"
+              required
+            />
+
+            <select
+              name="type"
+              value={utilisateur.type || "user"}
+              onChange={handleChange}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300
+             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
+             outline-none shadow-sm hover:shadow-md transition
+             text-sm sm:text-base"
             >
-              Importer fichier
-            </button>
-          )}
-        </div>
+              <option value="admin">Administrateur</option>
+              <option value="directeur">Directeur</option>
+              <option value="user">Utilisateur</option>
+            </select>
 
-        {/* Formulaire */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {mode === "manual" ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Champs du formulaire manuel */}
-              <input
-                name="nom"
-                value={utilisateur.nom || ""}
-                onChange={handleChange}
-                placeholder="Nom"
-                className="w-full p-3 border border-gray-300 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none"
-                required
-              />
-              <input
-                name="prenom"
-                value={utilisateur.prenom || ""}
-                onChange={handleChange}
-                placeholder="Prénom"
-                className="w-full p-3 border border-gray-300 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none"
-                required
-              />
-              <input
-                name="email"
-                value={utilisateur.email || ""}
-                onChange={handleChange}
-                placeholder="Email"
-                className="w-full p-3 border border-gray-300 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none"
-              />
-              <input
-                name="telephone"
-                value={utilisateur.telephone || ""}
-                onChange={handleChange}
-                placeholder="Téléphone"
-                className="w-full p-3 border border-gray-300 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none"
-              />
-              <input
-                name="adresse"
-                value={utilisateur.adresse || ""}
-                onChange={handleChange}
-                placeholder="Adresse"
-                className="w-full p-3 border border-gray-300 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none"
-              />
-              <input
-                name="pays"
-                value={utilisateur.pays || ""}
-                onChange={handleChange}
-                placeholder="Pays"
-                className="w-full p-3 border border-gray-300 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none"
-                required
-              />
-              <input
-                name="region"
-                value={utilisateur.region || ""}
-                onChange={handleChange}
-                placeholder="Région"
-                className="w-full p-3 border border-gray-300 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none"
-                required
-              />
-              <input
-                name="etablissement"
-                value={utilisateur.etablissement || ""}
-                onChange={handleChange}
-                placeholder="Établissement"
-                className="w-full p-3 border border-gray-300 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none"
-                required
-              />
-              <select
-                name="type"
-                value={utilisateur.type || "user"}
-                onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none"
-              >
-                <option value="admin">Administrateur</option>
-                <option value="directeur">Directeur</option>
-                <option value="user">Utilisateur</option>
-              </select>
-
-              {/* ------------------ */}
-              {/* Champ Photo de profil */}
-              {/* ------------------ */}
-  
-              <label className="w-full col-span-2">
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-cyan-500 cursor-pointer">
-                  {photo ? (
-                    <span className="text-cyan-700 font-medium">
-                      {photo.name}
-                    </span>
+            {/* PHOTO SECTION - sm:col-span-2 pour rester sur 2 colonnes en tablette/PC */}
+            <div className="md:col-span-2">
+              <label className="block group relative cursor-pointer">
+                <div
+                  className={`border-2 border-dashed rounded-2xl p-4 text-center transition-all duration-300 
+        ${
+          fileError
+            ? "border-red-400 bg-red-50"
+            : "border-gray-300 hover:border-cyan-500 hover:bg-cyan-50"
+        }`}
+                >
+                  {preview ? (
+                    <div className="relative w-28 h-28 mx-auto mt-2">
+                      <img
+                        src={preview}
+                        alt="Preview"
+                        className="w-full h-full object-cover rounded-full border-4 border-cyan-500 shadow-md"
+                      />
+                      {/* Icône de suppression en overlay */}
+                      <button
+                        type="button"
+                        onClick={removePhoto}
+                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-md transition"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   ) : (
-                    "Cliquez pour sélectionner une photo de profil"
+                    <div className="py-4">
+                      <p className="text-gray-600 font-medium">
+                        Cliquez pour sélectionner une photo
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        (JPG/PNG - Max 5MB)
+                      </p>
+                    </div>
                   )}
                 </div>
+
                 <input
                   type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      setPhoto(e.target.files[0]); // <--- On utilise setPhoto ici
-                    }
-                  }}
+                  accept="image/jpeg,image/png,image/jpg"
+                  onChange={handlePhotoChange}
                   className="hidden"
                 />
               </label>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center gap-4 p-4">
-              {/* Import fichier */}
-              <label className="w-full max-w-md">
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-pink-600 transition-colors cursor-pointer">
-                  <div className="text-gray-600 mb-2">
-                    Cliquez pour sélectionner un fichier
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Formats supportés: .csv, .xlsx, .xls
-                  </div>
-                </div>
-                <input
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </label>
-              {file && (
-                <div className="bg-cyan-50 border border-cyan-200 rounded-xl px-4 py-2">
-                  <span className="text-cyan-700 font-medium">{file.name}</span>
-                </div>
+
+              {fileError && (
+                <p className="mt-2 text-red-500 text-xs flex items-center gap-1">
+                  <AlertCircle size={14} /> {fileError}
+                </p>
               )}
             </div>
-          )}
+          </div>
 
-          {/* Footer avec boutons Annuler et Enregistrer/Importer */}
-          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+          {/* FOOTER - Utilisation de flex-col sur mobile pour empiler les boutons si nécessaire */}
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4 sm:pt-6 border-t border-gray-200 sticky bottom-0 bg-white">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-3 border border-gray-300 rounded-xl text-gray-600 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+              className="w-full sm:w-auto px-5 py-2.5 sm:py-3 border border-gray-300 rounded-xl text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               <ArrowLeft size={16} /> Annuler
             </button>
+
             <button
               type="submit"
-              disabled={loading}
-              className={`px-6 py-3 border rounded-xl text-white flex items-center gap-2 transition-colors ${
-                mode === "import"
-                  ? "bg-pink-600 border-pink-600 hover:bg-pink-700 hover:border-pink-700"
-                  : "bg-cyan-500 border-cyan-500 hover:bg-cyan-600 hover:border-cyan-600"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              disabled={loading || !!fileError}
+              className="w-full sm:w-auto px-6 py-2.5 sm:py-3 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium"
             >
-              <Save size={18} />{" "}
+              <Save size={18} />
               {loading
                 ? "Chargement..."
                 : userToEdit
                   ? "Modifier"
-                  : mode === "manual"
-                    ? "Enregistrer"
-                    : "Importer"}
+                  : "Enregistrer"}
             </button>
           </div>
         </form>
 
-        {/* Toast notifications */}
         {toast && (
           <Toast
             message={toast.message}
