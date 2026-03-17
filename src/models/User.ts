@@ -1,32 +1,38 @@
-// types/User.ts
-
-/**
- * 🔹 Type
- * Définit les rôles possibles pour un utilisateur.
- */
-export type Type = "admin" | "directeur" | "user";
+export type UserRole = "admin" | "user";
 
 /**
  * 🔹 User
- * Interface représentant un utilisateur dans le système.
+ * Interface représentant un utilisateur dans le système (React / Flutter).
  */
 export interface User {
-  id?: string; // ID unique généré par la base de données
-  nom: string; // Nom de famille de l'utilisateur
-  prenom: string; // Prénom de l'utilisateur
-  email: string; // Email utilisé pour la connexion
-  password?: string; // Mot de passe (optionnel côté frontend)
-  telephone?: string; // Numéro de téléphone (optionnel)
-  type: Type; // Rôle de l'utilisateur (admin, directeur, user)
-  isActif?: boolean; // Indique si l'utilisateur est actif
+  id?: number; // Sequelize utilise souvent des entiers par défaut
+  type: UserRole;
+  isOnline?: boolean;
+  // Identité
+  nom: string;
+  prenom: string;
+  email: string;
+  password?: string;
+  telephone?: string;
+  photo?: string;
+
+  // Cœur du projet (Adaptation métier)
+  secteur_activite: string;
+  entreprise: string;
+
+  // État du compte
+  isActif?: boolean;
   doitChangerPassword?: boolean;
-  adresse?: string; // Adresse complète (optionnel)
-  pays: string; // Pays de l'utilisateur (obligatoire côté modèle)
-  region: string; // Région de l'utilisateur (obligatoire côté modèle)
-  etablissement: string; // Établissement lié à l'utilisateur (obligatoire côté modèle)
-  photo?: string; // URL ou chemin vers la photo de profil (optionnel)
-  createdAt?: Date; // Date de création du compte
-  updatedAt?: Date; // Date de dernière mise à jour
+
+  // Localisation Internationale
+  adresse?: string;
+  pays: string;
+  pays_code: string; // Ex: "GN", "FR"
+  region: string;
+
+  // Timestamps
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
 
 /**

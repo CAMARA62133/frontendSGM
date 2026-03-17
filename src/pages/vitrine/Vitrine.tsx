@@ -11,14 +11,13 @@ import {
   Heart,
   Menu,
   X,
-
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   autoRefresh,
   nombreMessagesNonLus,
 } from "../../services/messageService";
-import { getUnreadCounts } from "../../services/communicationService";
+import { communicationService } from "../chat/services/communicationService";
 
 const Vitrine: React.FC = () => {
   const { logout, user } = useAuth();
@@ -39,7 +38,7 @@ const Vitrine: React.FC = () => {
   }, []);
   const fetchUnreadCountCommunication = useCallback(async () => {
     try {
-      const response = await getUnreadCounts();
+      const response = await communicationService.getUnreadCount();
       setUnreadCountCommunication(response.count ?? 0);
     } catch {
       setUnreadCountCommunication(0);

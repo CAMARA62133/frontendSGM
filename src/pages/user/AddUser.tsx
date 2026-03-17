@@ -23,8 +23,10 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
     telephone: "",
     adresse: "",
     pays: "",
+    pays_code: "", // Nouveau
     region: "",
-    etablissement: "",
+    entreprise: "", // Remplacé etablissement
+    secteur_activite: "", // Nouveau
     type: "user",
   });
 
@@ -112,7 +114,7 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
       }
 
       if (userToEdit) {
-        await updateUser(userToEdit.id!, formData);
+     await updateUser(String(userToEdit.id), formData);
         setToast({ message: "Mis à jour avec succès !", type: "success" });
       } else {
         await register(formData);
@@ -136,9 +138,8 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-sm">
-      {/* Ajustement de la largeur (w-full) et de la hauteur max pour le scroll mobile */}
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        {/* HEADER - Ajustement du padding et de la taille du texte sur mobile */}
+        {/* HEADER */}
         <div className="bg-cyan-500 px-4 sm:px-6 py-3 sm:py-4 text-white flex justify-between items-center shrink-0">
           <h2 className="text-lg sm:text-2xl font-bold truncate mr-2">
             {userToEdit ? "Modifier utilisateur" : "Ajouter utilisateur"}
@@ -151,7 +152,7 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
           </button>
         </div>
 
-        {/* FORM - Ajout d'un overflow-y-auto pour que le contenu défile si l'écran est petit */}
+        {/* FORM */}
         <form
           onSubmit={handleSubmit}
           className="p-4 sm:p-6 space-y-4 sm:y-6 overflow-y-auto grow"
@@ -162,10 +163,7 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
               value={utilisateur.nom || ""}
               onChange={handleChange}
               placeholder="Nom"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300
-             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
-             outline-none shadow-sm hover:shadow-md transition
-             text-sm sm:text-base"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base"
               required
             />
             <input
@@ -173,10 +171,7 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
               value={utilisateur.prenom || ""}
               onChange={handleChange}
               placeholder="Prénom"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300
-             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
-             outline-none shadow-sm hover:shadow-md transition
-             text-sm sm:text-base"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base"
               required
             />
             <input
@@ -185,62 +180,69 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
               value={utilisateur.email || ""}
               onChange={handleChange}
               placeholder="Email"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300
-             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
-             outline-none shadow-sm hover:shadow-md transition
-             text-sm sm:text-base"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base"
+              required
             />
             <input
               name="telephone"
               value={utilisateur.telephone || ""}
               onChange={handleChange}
               placeholder="Téléphone"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300
-             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
-             outline-none shadow-sm hover:shadow-md transition
-             text-sm sm:text-base"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base"
             />
             <input
               name="adresse"
               value={utilisateur.adresse || ""}
               onChange={handleChange}
               placeholder="Adresse"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300
-             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
-             outline-none shadow-sm hover:shadow-md transition
-             text-sm sm:text-base"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base"
             />
-            <input
-              name="pays"
-              value={utilisateur.pays || ""}
-              onChange={handleChange}
-              placeholder="Pays"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300
-             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
-             outline-none shadow-sm hover:shadow-md transition
-             text-sm sm:text-base"
-              required
-            />
+
+            {/* Pays et Code Pays */}
+            <div className="grid grid-cols-3 gap-2">
+              <input
+                name="pays"
+                value={utilisateur.pays || ""}
+                onChange={handleChange}
+                placeholder="Pays"
+                className="col-span-2 w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base"
+                required
+              />
+              <input
+                name="pays_code"
+                value={utilisateur.pays_code || ""}
+                onChange={handleChange}
+                placeholder="Code (GN)"
+                maxLength={2}
+                className="w-full px-2 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base uppercase"
+                required
+              />
+            </div>
+
             <input
               name="region"
               value={utilisateur.region || ""}
               onChange={handleChange}
               placeholder="Région"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300
-             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
-             outline-none shadow-sm hover:shadow-md transition
-             text-sm sm:text-base"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base"
               required
             />
+
             <input
-              name="etablissement"
-              value={utilisateur.etablissement || ""}
+              name="entreprise"
+              value={utilisateur.entreprise || ""}
               onChange={handleChange}
-              placeholder="Établissement"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300
-             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
-             outline-none shadow-sm hover:shadow-md transition
-             text-sm sm:text-base"
+              placeholder="Entreprise"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base"
+              required
+            />
+
+            <input
+              name="secteur_activite"
+              value={utilisateur.secteur_activite || ""}
+              onChange={handleChange}
+              placeholder="Secteur d'activité"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base"
               required
             />
 
@@ -248,17 +250,13 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
               name="type"
               value={utilisateur.type || "user"}
               onChange={handleChange}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300
-             focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100
-             outline-none shadow-sm hover:shadow-md transition
-             text-sm sm:text-base"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none shadow-sm hover:shadow-md transition text-sm sm:text-base"
             >
-              <option value="admin">Administrateur</option>
-              <option value="directeur">Directeur</option>
               <option value="user">Utilisateur</option>
+              <option value="admin">Administrateur</option>
             </select>
 
-            {/* PHOTO SECTION - sm:col-span-2 pour rester sur 2 colonnes en tablette/PC */}
+            {/* PHOTO SECTION */}
             <div className="md:col-span-2">
               <label className="block group relative cursor-pointer">
                 <div
@@ -276,7 +274,6 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
                         alt="Preview"
                         className="w-full h-full object-cover rounded-full border-4 border-cyan-500 shadow-md"
                       />
-                      {/* Icône de suppression en overlay */}
                       <button
                         type="button"
                         onClick={removePhoto}
@@ -313,7 +310,7 @@ const AddOrEditUser: React.FC<Props> = ({ isOpen, onClose, userToEdit }) => {
             </div>
           </div>
 
-          {/* FOOTER - Utilisation de flex-col sur mobile pour empiler les boutons si nécessaire */}
+          {/* FOOTER */}
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4 sm:pt-6 border-t border-gray-200 sticky bottom-0 bg-white">
             <button
               type="button"

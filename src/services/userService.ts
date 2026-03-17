@@ -61,6 +61,7 @@ export const getProfil = () => api.get<ApiResponse>("/auth/profil");
 
 
 export const getAllUsers = () => api.get<ApiResponse>("/users");
+export const getCollegue = () => api.get<ApiResponse>("/communications/mes-collegues");
 
 export const getUserById = (id: string) => api.get<ApiResponse>(`/users/${id}`);
 

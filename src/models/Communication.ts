@@ -38,3 +38,24 @@ export interface UnreadByConversationResponse {
     [key: string]: number;
   };
 }
+
+// src/models/AI.ts
+
+export interface AIResponse {
+  success: boolean;
+  answer: string;
+  error?: string;
+}
+
+export interface AIParams {
+  question: string;
+}
+
+export interface AIParamsInput {
+  inputText: string;
+}
+
+export interface AIResponseInput {
+  success: boolean;
+  suggestions: string[];
+}

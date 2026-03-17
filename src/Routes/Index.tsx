@@ -25,7 +25,7 @@ import TrashPage from "../pages/message/trash/TrashPage";
 // Dashboards élèves / parents
 import DashboardEleve from "../pages/user/DashboardEleve";
 import ParentStudentDashboard from "../pages/user/ParentStudentDashboard";
-import CanalCommunication from "../pages/cannalcommunication/CanalCommunication";
+import CanalCommunication from "../pages/chat/CanalCommunication";
 import Vitrine from "../pages/vitrine/Vitrine";
 import MessageDetailPage from "../pages/message/MessageDetailPage";
 

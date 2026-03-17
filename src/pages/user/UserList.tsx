@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import {
   Edit3,
@@ -9,13 +11,13 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { getAllUsers, toggleUser } from "../../services/userService";
-import type { User, Type } from "../../models/User";
+import type { User, UserRole } from "../../models/User"; // Utilisation de UserRole mis à jour
 
 import Toast from "../../components/ui/Toast";
 import AddOrEditUser from "./AddUser";
 
 type StatusFilter = "all" | "active" | "inactive";
-type TypeFilter = Type | "all";
+type TypeFilter = UserRole | "all" | "directeur"; // On garde directeur si présent dans ton interface
 
 const UserList: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -24,7 +26,7 @@ const UserList: React.FC = () => {
 
   // --- ÉTATS POUR LA PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // Nombre d'utilisateurs par page
+  const [itemsPerPage] = useState(5);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -43,7 +45,9 @@ const UserList: React.FC = () => {
     try {
       setLoading(true);
       const response = await getAllUsers();
-      setUsers(response.data.users || []);
+      // On s'assure de récupérer les données selon la structure de ton API
+      const fetchedUsers = response.data?.users || response.data || [];
+      setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : []);
     } catch {
       setToast({
         message: "Erreur lors du chargement des utilisateurs",
@@ -78,7 +82,7 @@ const UserList: React.FC = () => {
       result = result.filter((user) => user.type === typeFilter);
     }
     setFilteredUsers(result);
-    setCurrentPage(1); // Réinitialiser à la page 1 lors d'un filtrage
+    setCurrentPage(1);
   }, [users, searchTerm, statusFilter, typeFilter]);
 
   // --- CALCULS DE PAGINATION ---
@@ -87,9 +91,10 @@ const UserList: React.FC = () => {
   const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
-  const handleToggleUser = async (userId: string) => {
+  const handleToggleUser = async (userId: string | number) => {
     try {
-      await toggleUser(userId);
+      // Conversion en string pour le service si nécessaire
+      await toggleUser(String(userId));
       setToast({ message: "Statut mis à jour", type: "success" });
       fetchUsers();
     } catch {
@@ -114,7 +119,7 @@ const UserList: React.FC = () => {
       ? "bg-green-100 text-green-800 border-green-200"
       : "bg-red-100 text-red-800 border-red-200";
 
-  const getTypeClass = (type: Type) => {
+  const getTypeClass = (type: string) => {
     if (type === "admin") return "bg-pink-100 text-pink-800 border-pink-200";
     if (type === "directeur")
       return "bg-cyan-100 text-cyan-800 border-cyan-200";
@@ -131,9 +136,8 @@ const UserList: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Section des statistiques */}
+      {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Carte : Total */}
         <div className="bg-white rounded-xl p-5 border border-gray-100 flex items-center gap-4">
           <div className="p-3 bg-cyan-50 rounded-lg">
             <Users className="text-cyan-600" size={22} />
@@ -146,7 +150,6 @@ const UserList: React.FC = () => {
           </div>
         </div>
 
-        {/* Carte : Actifs */}
         <div className="bg-white rounded-xl p-5 border border-gray-100 flex items-center gap-4">
           <div className="p-3 bg-emerald-50 rounded-lg">
             <svg
@@ -174,7 +177,6 @@ const UserList: React.FC = () => {
           </div>
         </div>
 
-        {/* Carte : Admins */}
         <div className="bg-white rounded-xl p-5 border border-gray-100 flex items-center gap-4">
           <div className="p-3 bg-pink-50 rounded-lg">
             <Users className="text-pink-600" size={22} />
@@ -194,30 +196,22 @@ const UserList: React.FC = () => {
       <div className="bg-white rounded-xl border border-gray-100 mt-6">
         <div className="p-6 border-b border-gray-50">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex items-center gap-4">
-
-              <div>
-                <h1 className="text-xl font-bold text-pink-500">
-                  Liste des Utilisateurs
-                </h1>
-                <p className="text-sm text-cyan-500">
-                  {filteredUsers.length} résultat
-                  {filteredUsers.length > 1 ? "s" : ""} trouvé
-                  {filteredUsers.length > 1 ? "s" : ""}
-                </p>
-              </div>
+            <div>
+              <h1 className="text-xl font-bold text-pink-500">
+                Liste des Utilisateurs
+              </h1>
+              <p className="text-sm text-cyan-500">
+                {filteredUsers.length} résultat(s) trouvé(s)
+              </p>
             </div>
-
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="bg-cyan-600 hover:bg-cyan-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
             >
-              <Plus size={18} />
-              Nouveau compte
+              <Plus size={18} /> Nouveau compte
             </button>
           </div>
 
-          {/* Zone des filtres avec design épuré */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
             <div className="relative">
               <Search
@@ -226,7 +220,7 @@ const UserList: React.FC = () => {
               />
               <input
                 type="text"
-                placeholder="Rechercher un nom ou email..."
+                placeholder="Rechercher..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-cyan-500/10 focus:border-cyan-500 transition-all outline-none"
@@ -236,33 +230,31 @@ const UserList: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:border-cyan-500 outline-none transition-all cursor-pointer"
+              className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none transition-all cursor-pointer"
             >
               <option value="all">Tous les statuts</option>
-              <option value="active">Actifs uniquement</option>
-              <option value="inactive">Inactifs uniquement</option>
+              <option value="active">Actifs</option>
+              <option value="inactive">Inactifs</option>
             </select>
 
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-              className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:border-cyan-500 outline-none transition-all cursor-pointer"
+              className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none transition-all cursor-pointer"
             >
               <option value="all">Tous les rôles</option>
               <option value="admin">Administrateur</option>
-              <option value="directeur">Directeur</option>
               <option value="user">Utilisateur</option>
             </select>
 
             <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all">
-              <Download size={16} />
-              Exporter CSV
+              <Download size={16} /> Exporter CSV
             </button>
           </div>
         </div>
       </div>
 
-      {/* Tableau avec Pagination */}
+      {/* Tableau */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -281,7 +273,7 @@ const UserList: React.FC = () => {
                   Statut
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold">
-                  Établissement
+                  Entreprise
                 </th>
                 <th className="px-6 py-4 text-right text-sm font-semibold">
                   Actions
@@ -328,35 +320,23 @@ const UserList: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {user.etablissement}
+                    {user.entreprise}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
-                      {/* Bouton modifier */}
                       <button
                         onClick={() => handleEdit(user)}
-                        className="p-2 text-pink-600 hover:bg-pink-50 rounded-lg transition-colors duration-200"
+                        className="p-2 text-pink-600 hover:bg-pink-50 rounded-lg transition-colors"
                         title="Modifier"
                       >
                         <Edit3 size={18} />
                       </button>
-
-                      {/* Bouton Verrouiller/Déverrouiller (Cadenas) */}
                       <button
                         onClick={() => user.id && handleToggleUser(user.id)}
-                        className={`p-2 rounded-lg transition-all duration-200 ${
-                          user.isActif
-                            ? "text-emerald-600 hover:bg-emerald-50"
-                            : "text-red-500 hover:bg-red-50"
-                        }`}
-                        title={
-                          user.isActif
-                            ? "Désactiver le compte"
-                            : "Activer le compte"
-                        }
+                        className={`p-2 rounded-lg transition-all ${user.isActif ? "text-emerald-600 hover:bg-emerald-50" : "text-red-500 hover:bg-red-50"}`}
+                        title={user.isActif ? "Désactiver" : "Activer"}
                       >
                         {user.isActif ? (
-                          /* Si actif : icône déverrouillée (ouvert) */
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="18"
@@ -379,7 +359,6 @@ const UserList: React.FC = () => {
                             <path d="M7 11V7a5 5 0 0 1 9.9-1" />
                           </svg>
                         ) : (
-                          /* Si inactif : icône verrouillée (fermé) */
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="18"
@@ -411,7 +390,7 @@ const UserList: React.FC = () => {
           </table>
         </div>
 
-        {/* --- BARRE DE PAGINATION --- */}
+        {/* Pagination */}
         {filteredUsers.length > itemsPerPage && (
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
             <div className="text-sm text-gray-600">
@@ -420,36 +399,29 @@ const UserList: React.FC = () => {
               <span className="font-semibold">
                 {Math.min(indexOfLastItem, filteredUsers.length)}
               </span>{" "}
-              sur <span className="font-semibold">{filteredUsers.length}</span>{" "}
-              utilisateurs
+              sur <span className="font-semibold">{filteredUsers.length}</span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((prev) => prev - 1)}
-                className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg border border-gray-300 bg-white disabled:opacity-50"
               >
                 <ChevronLeft size={20} />
               </button>
-
               {[...Array(totalPages)].map((_, index) => (
                 <button
                   key={index + 1}
                   onClick={() => setCurrentPage(index + 1)}
-                  className={`w-10 h-10 rounded-lg border font-semibold transition-all ${
-                    currentPage === index + 1
-                      ? "bg-cyan-500 border-cyan-500 text-white shadow-sm"
-                      : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
-                  }`}
+                  className={`w-10 h-10 rounded-lg border font-semibold ${currentPage === index + 1 ? "bg-cyan-500 border-cyan-500 text-white" : "bg-white border-gray-300 text-gray-600"}`}
                 >
                   {index + 1}
                 </button>
               ))}
-
               <button
                 disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((prev) => prev + 1)}
-                className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={() => setCurrentPage((prev) => prev - 1)}
+                className="p-2 rounded-lg border border-gray-300 bg-white disabled:opacity-50"
               >
                 <ChevronRight size={20} />
               </button>
